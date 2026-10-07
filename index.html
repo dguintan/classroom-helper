@@ -165,6 +165,17 @@
                 </table>
             </div>
         </div>
+        <!-- 歷史紀錄：逐筆核對與刪除 -->
+        <div id="view-history" class="hidden p-4 fade-in">
+            <h2 class="text-lg font-bold text-gray-700 mb-3">已儲存紀錄</h2>
+            <p class="text-sm text-gray-500 mb-4">最新紀錄在上方。刪除一筆後，該筆分數與次數會一併移除。</p>
+            <label class="block text-sm mb-3">查看座號
+                <select id="history-student-filter" class="w-full p-2 border rounded-lg bg-white mt-1"><option value="all">全班</option></select>
+            </label>
+            <p id="history-summary" class="text-sm text-gray-500 mb-3" aria-live="polite"></p>
+            <div id="history-list" class="flex flex-col gap-3"></div>
+            <button id="history-more" class="hidden w-full p-3 mt-4 border rounded-lg bg-white">載入更多紀錄</button>
+        </div>
         <!-- 4. 設定頁面 -->
         <div id="view-settings" class="hidden p-4 fade-in">
             <h2 class="text-lg font-bold text-gray-700 mb-4">系統設定</h2><div class="bg-white p-4 rounded-xl mb-4"><p id="teacher-email" class="text-sm break-all mb-2"></p><button id="logout-button" class="border rounded px-4 py-2">登出教師帳號</button></div>
@@ -224,6 +235,10 @@
                 <i class="fas fa-chart-pie text-xl mb-1"></i>
                 <span class="text-xs font-medium">統計</span>
             </button>
+            <button data-tab="history" class="nav-btn flex flex-col items-center justify-center w-full h-full text-gray-400 hover:text-blue-500">
+                <i class="fas fa-clock-rotate-left text-xl mb-1"></i>
+                <span class="text-xs font-medium">紀錄</span>
+            </button>
             <button data-tab="settings" class="nav-btn flex flex-col items-center justify-center w-full h-full text-gray-400 hover:text-blue-500">
                 <i class="fas fa-cog text-xl mb-1"></i>
                 <span class="text-xs font-medium">設定</span>
@@ -258,7 +273,8 @@
 let initializeApp, getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword,
     onAuthStateChanged, signOut, EmailAuthProvider, linkWithCredential,
     getFirestore, doc, setDoc, getDoc, onSnapshot, collection, addDoc, getDocs, deleteDoc, writeBatch, runTransaction;
-let unsubscribe = [], sessionVersion = 0;
+let unsubscribe = [], sessionVersion = 0, historyLimit = 50;
+const deletingRecords = new Set();
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function explainError(error) {
  const code = error.code || error.name || 'unknown';
@@ -292,7 +308,7 @@ function connected() { clearError(); document.getElementById('auth-status').text
 function stopCloud() { unsubscribe.forEach(fn => fn()); unsubscribe = []; }
 function loginView() {
  stopCloud(); userId = null; state.isLoaded = false; state.records=[]; state.behaviors=[];
- resetSelection();
+ resetSelection(); renderHistory(); hideModal();
  document.getElementById('view-login').classList.remove('hidden');
  document.getElementById('app-content').classList.add('hidden');
  document.querySelector('nav').classList.add('hidden');
@@ -312,6 +328,7 @@ function loginView() {
             selectedStudents: new Set(),
             selectedBehavior: null,
             actionCount: 1,
+            currentTab: 'record',
             currentSubject: '日常常規'
         };
         // 預設加扣分項目
@@ -355,7 +372,7 @@ function loginView() {
                     document.getElementById('teacher-email').textContent = user.email;
                     document.getElementById('view-login').classList.add('hidden');
                     document.getElementById('app-content').classList.remove('hidden');
-                    ['record','manage','stats','settings'].forEach(id => document.getElementById(`view-${id}`).classList.add('hidden'));
+                    ['record','manage','stats','history','settings'].forEach(id => document.getElementById(`view-${id}`).classList.add('hidden'));
                     document.getElementById('view-loading').classList.remove('hidden');
                     document.getElementById('auth-status').textContent='讀取雲端資料…';
                     const timeout=setTimeout(()=>{
@@ -443,7 +460,7 @@ function loginView() {
                         renderBehaviors();renderManageList();checkActionState();
                     }),
                     listen(collection(db,'artifacts',APP_ID,'users',uid,'records'),snap=>{
-                        state.records=snap.docs.map(d=>({...d.data(),id:d.id}));renderStats();
+                        state.records=snap.docs.map(d=>({...d.data(),id:d.id}));renderStats();renderHistory();
                     })
                 ]);
                 if(session!==sessionVersion) return;
@@ -560,7 +577,7 @@ function loginView() {
         }
         function checkActionState() {
             const bar = document.getElementById('action-bar');
-            if (state.selectedStudents.size > 0 && state.selectedBehavior) {
+            if (state.isLoaded && state.currentTab === 'record' && state.selectedStudents.size > 0 && state.selectedBehavior) {
                 // 兩者都選了，彈出確認面板
                 document.getElementById('action-target').textContent = `已選擇 ${state.selectedStudents.size} 位學生`;
                 const isPos = state.selectedBehavior.type === 'positive';
@@ -612,6 +629,101 @@ function loginView() {
                 btn.innerHTML = '<i class="fas fa-paper-plane"></i> 寫入雲端紀錄';
                 btn.disabled = false;
             }
+        }
+        // --- 歷史紀錄與刪除 ---
+        function recordDate(record) {
+            const value=record.timestamp;
+            return value?.toDate ? value.toDate() : new Date(value);
+        }
+        function recordTime(record) {
+            const date=recordDate(record);
+            return Number.isNaN(date.getTime()) ? '時間未提供' : new Intl.DateTimeFormat('zh-TW',{
+                timeZone:'Asia/Taipei',year:'numeric',month:'2-digit',day:'2-digit',
+                hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false
+            }).format(date);
+        }
+        function recordPoints(record) {
+            return Number(record.totalPoints ?? Number(record.points||0)*Number(record.count||1));
+        }
+        function renderHistory() {
+            const filter=document.getElementById('history-student-filter');
+            const previous=filter.value||'all';
+            const seats=[...new Set([
+                ...Array.from({length:state.studentsCount},(_,i)=>i+1),
+                ...state.records.map(r=>Number(r.studentId)).filter(n=>Number.isInteger(n)&&n>0)
+            ])].sort((a,b)=>a-b);
+            filter.innerHTML='<option value="all">全班</option>';
+            seats.forEach(seat=>{
+                const opt=document.createElement('option');opt.value=String(seat);opt.textContent=`${seat} 號`;filter.appendChild(opt);
+            });
+            filter.value=previous==='all'||seats.includes(Number(previous)) ? previous : 'all';
+            const records=state.records.filter(r=>filter.value==='all'||Number(r.studentId)===Number(filter.value))
+                .sort((a,b)=>(recordDate(b).getTime()||0)-(recordDate(a).getTime()||0)||String(a.id).localeCompare(String(b.id)));
+            const list=document.getElementById('history-list');list.innerHTML='';
+            document.getElementById('history-summary').textContent=`共 ${records.length} 筆，顯示 ${Math.min(historyLimit,records.length)} 筆`;
+            if(!records.length) {
+                const empty=document.createElement('p');empty.className='bg-white p-4 rounded-xl text-gray-500';
+                empty.textContent='目前沒有符合條件的紀錄。';list.appendChild(empty);
+            }
+            records.slice(0,historyLimit).forEach(record=>{
+                const card=document.createElement('article');card.className='bg-white border rounded-xl p-4 shadow-sm';
+                const points=recordPoints(record);
+                card.innerHTML=`<div class="flex justify-between items-start gap-3">
+                    <div class="min-w-0"><h3 class="font-bold break-words">${esc(record.studentId)} 號 · ${esc(record.behaviorName)}</h3>
+                    <p class="text-sm mt-1">${esc(record.count??1)} 次 · <span class="font-bold ${points<0?'text-red-600':'text-green-600'}">${points>0?'+':''}${esc(points)} 分</span></p>
+                    <p class="text-xs text-gray-500 mt-2">${esc(record.subject||'未指定科目')} · ${esc(recordTime(record))}</p></div>
+                </div>`;
+                const remove=document.createElement('button');remove.type='button';
+                remove.className='mt-3 px-4 py-2 rounded-lg bg-red-50 text-red-700 border border-red-200 font-bold';
+                remove.textContent=deletingRecords.has(record.id)?'刪除中…':'刪除這筆';remove.disabled=deletingRecords.has(record.id);
+                remove.setAttribute('aria-label',`刪除 ${record.studentId} 號 ${record.behaviorName} 的紀錄`);
+                remove.onclick=()=>confirmRecordDeletion(record.id);card.appendChild(remove);list.appendChild(card);
+            });
+            document.getElementById('history-more').classList.toggle('hidden',records.length<=historyLimit);
+        }
+        function confirmRecordDeletion(id) {
+            const record=state.records.find(r=>r.id===id);
+            if(!record||!state.isLoaded||!userId||deletingRecords.has(id)) return;
+            const points=recordPoints(record);
+            showModal(`<div class="p-4 border-b font-bold text-lg">確認刪除這筆紀錄？</div>
+                <div class="p-4 flex flex-col gap-2 text-sm">
+                    <p class="font-bold">${esc(record.studentId)} 號 · ${esc(record.behaviorName)}</p>
+                    <p>${esc(record.count??1)} 次 · ${points>0?'+':''}${esc(points)} 分</p>
+                    <p>${esc(record.subject||'未指定科目')} · ${esc(recordTime(record))}</p>
+                    <p class="text-red-700 mt-2">刪除後會從雲端移除，統計會重新計算。此操作無法復原。</p>
+                    <p id="record-delete-error" class="text-red-700 whitespace-pre-wrap break-words" role="alert"></p>
+                </div>
+                <div class="p-4 border-t flex justify-end gap-3">
+                    <button id="record-delete-cancel" class="px-4 py-2 border rounded-lg">取消</button>
+                    <button id="record-delete-confirm" class="px-4 py-2 bg-red-600 text-white rounded-lg font-bold">確認刪除</button>
+                </div>`);
+            document.getElementById('record-delete-cancel').onclick=hideModal;
+            const session=sessionVersion, uid=userId;
+            document.getElementById('record-delete-confirm').onclick=async()=>{
+                const btn=document.getElementById('record-delete-confirm');
+                if(deletingRecords.has(id)||session!==sessionVersion||uid!==userId) return;
+                if(!navigator.onLine) {
+                    document.getElementById('record-delete-error').textContent='目前沒有網路，請恢復連線後再刪除。';return;
+                }
+                deletingRecords.add(id);btn.disabled=true;btn.textContent='刪除中…';
+                document.getElementById('record-delete-cancel').disabled=true;
+                try {
+                    await deleteDoc(doc(db,'artifacts',APP_ID,'users',uid,'records',id));
+                    if(session!==sessionVersion||uid!==userId) return;
+                    state.records=state.records.filter(r=>r.id!==id);
+                    renderStats();renderHistory();hideModal();connected();showToast('已刪除此筆紀錄，統計已更新','success');
+                } catch(error) {
+                    if(session!==sessionVersion||uid!==userId) return;
+                    document.getElementById('record-delete-error').textContent=explainError(error);
+                    reportError(error);
+                } finally {
+                    deletingRecords.delete(id);
+                    if(session===sessionVersion&&uid===userId) {
+                        btn.disabled=false;btn.textContent='確認刪除';
+                        document.getElementById('record-delete-cancel').disabled=false;renderHistory();
+                    }
+                }
+            };
         }
         // --- 統計與匯出邏輯 ---
         function renderStats() {
@@ -795,9 +907,10 @@ function loginView() {
         // --- 工具與事件綁定 ---
         function switchTab(tabId) {
             if(!state.isLoaded) return;
+            state.currentTab=tabId; checkActionState();
             document.getElementById('app-content').scrollTop=0;
             // 切換畫面
-            ['record', 'manage', 'stats', 'settings'].forEach(id => {
+            ['record', 'manage', 'stats', 'history', 'settings'].forEach(id => {
                 document.getElementById(`view-${id}`).classList.add('hidden');
             });
             document.getElementById(`view-${tabId}`).classList.remove('hidden');
@@ -809,6 +922,7 @@ function loginView() {
                     btn.classList.replace('text-blue-600', 'text-gray-400');
                 }
             });
+            if(tabId==='history') renderHistory();
             // 進入統計頁時更新科目下拉選單並重新渲染
             if (tabId === 'stats') {
                 const subFilter = document.getElementById('stat-subject-filter');
@@ -873,6 +987,8 @@ function loginView() {
                 const val = Number(document.getElementById('setting-student-count').value);
                 if(Number.isInteger(val) && val > 0 && val <= 99) { state.studentsCount = val; saveSettings(); }
             };
+            document.getElementById('history-student-filter').onchange=()=>{historyLimit=50;renderHistory();};
+            document.getElementById('history-more').onclick=()=>{historyLimit+=50;renderHistory();};
             // 統計篩選
             document.getElementById('stat-date-filter').onchange = renderStats;
             document.getElementById('stat-subject-filter').onchange = renderStats;
