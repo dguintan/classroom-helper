@@ -118,8 +118,9 @@
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // 👇 你的專屬 Firebase 金鑰設定 👇
         const appId = 'classroom-manager-pro';
+        
+        // 這裡已經換成你專屬的 Firebase 金鑰！
         const firebaseConfig = {
             apiKey: "AIzaSyDHgLHHGsaq1tKFplX65_vK1kHz369s_ho",
             authDomain: "classroom-db-63b1a.firebaseapp.com",
@@ -128,7 +129,6 @@
             messagingSenderId: "1015916849173",
             appId: "1:1015916849173:web:23ba3dbf221e3d0061861c"
         };
-        // 👆 --------------------------------- 👆
 
         let app, db, auth, currentUser;
         
@@ -181,7 +181,7 @@
                 db = getFirestore(app);
                 auth = getAuth(app);
 
-                // 使用匿名登入，確保資料安全且不用記帳號密碼
+                // 使用匿名登入
                 await signInAnonymously(auth);
                 
                 currentUser = auth.currentUser;
@@ -1140,7 +1140,6 @@
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.register(swUrl).catch(console.error);
             }
-            // ---------------------------------------------
         });
     </script>
 </body>
