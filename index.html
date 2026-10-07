@@ -120,7 +120,7 @@
 
         const appId = 'classroom-manager-pro';
         
-        // 這裡已經換成你專屬的 Firebase 金鑰！
+        // 這是你專屬的 Firebase 金鑰！
         const firebaseConfig = {
             apiKey: "AIzaSyDHgLHHGsaq1tKFplX65_vK1kHz369s_ho",
             authDomain: "classroom-db-63b1a.firebaseapp.com",
@@ -181,7 +181,7 @@
                 db = getFirestore(app);
                 auth = getAuth(app);
 
-                // 使用匿名登入
+                // 強制使用匿名登入
                 await signInAnonymously(auth);
                 
                 currentUser = auth.currentUser;
