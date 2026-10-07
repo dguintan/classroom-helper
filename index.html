@@ -2,125 +2,248 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>班級經營小幫手 - 雲端進階版</title>
-    <!-- PWA Meta Tags -->
-    <meta name="theme-color" content="#2563eb">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <!-- PWA 標籤 -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="班小幫手">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/1080/1080985.png">
+    <meta name="theme-color" content="#2563eb">
+    <link rel="apple-touch-icon" href="./icon-192.png">
+    <title>601 班級經營小幫手</title>
+<link rel="manifest" href="./manifest.webmanifest">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: 'Inter', sans-serif;
             background-color: #f3f4f6;
             -webkit-tap-highlight-color: transparent;
+            user-select: none;
         }
-        
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px;}
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
-        
         .pb-safe { padding-bottom: env(safe-area-inset-bottom, 16px); }
-
-        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        .fade-in { animation: fadeIn 0.2s ease-out; }
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(5px); }
-            to { opacity: 1; transform: translateY(0); }
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
         }
-
-        .toast-enter { animation: toastEnter 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
-        @keyframes toastEnter {
-            from { transform: translate(-50%, 100%); opacity: 0; }
-            to { transform: translate(-50%, 0); opacity: 1; }
-        }
-
+        /* 浮動操作列動畫 */
         .action-bar { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         .action-bar-hidden { transform: translateY(150%); }
         .action-bar-visible { transform: translateY(0); }
+        /* 學生格子被選取的樣式 */
+        .student-card { transition: all 0.2s; }
+        .student-selected {
+            background-color: #dbeafe !important;
+            border-color: #3b82f6 !important;
+            box-shadow: 0 0 0 2px #3b82f6 inset;
+        }
+        /* 項目按鈕被選取的樣式 */
+        .behavior-selected {
+            border-color: #1f2937 !important;
+            box-shadow: 0 0 0 2px #1f2937 inset;
+            transform: scale(0.98);
+        }
     </style>
 </head>
-<body class="h-screen w-screen flex flex-col overflow-hidden bg-gray-50 text-gray-800">
-
-    <!-- Header -->
+<body class="h-screen w-full flex flex-col overflow-hidden bg-gray-50 text-gray-800">
+    <!-- 標題列 -->
     <header class="bg-blue-600 text-white p-4 shadow-md z-10 flex-shrink-0 flex justify-between items-center relative">
-        <h1 class="text-xl font-bold tracking-wider">班級經營小幫手</h1>
+        <h1 class="text-xl font-bold tracking-wider">601 班級經營小幫手</h1>
         <div id="auth-status" class="text-xs bg-blue-700 px-3 py-1.5 rounded-full text-blue-100 flex items-center gap-2 shadow-inner">
-            <i class="fas fa-spinner fa-spin"></i> 連線中
+            <i class="fas fa-spinner fa-spin"></i> 連線中...
         </div>
     </header>
-
-    <!-- Main Content Area -->
-    <main id="app-content" class="flex-1 overflow-y-auto relative custom-scrollbar pb-32 p-4">
-        <div id="loading-spinner" class="flex flex-col items-center justify-center h-full text-gray-400 gap-3">
+    <section id="view-login" class="hidden p-5 max-w-md mx-auto w-full overflow-y-auto">
+<h2 class="text-xl font-bold mb-3">教師帳號登入</h2>
+<p class="text-sm mb-4">手機與電腦使用同一組電子郵件與密碼，即可同步資料。</p>
+<form id="login-form" class="flex flex-col gap-3">
+<label>電子郵件<input id="login-email" type="email" autocomplete="username" required class="border rounded p-3 w-full"></label>
+<label>密碼<input id="login-password" type="password" autocomplete="current-password" required minlength="6" class="border rounded p-3 w-full"></label>
+<button id="login-submit" class="bg-blue-600 text-white p-3 rounded font-bold">登入</button>
+<button type="button" id="register-submit" class="border p-3 rounded">首次建立教師帳號／升級原匿名帳號</button>
+</form>
+<p class="text-xs text-gray-500 mt-3">請先在 Firebase Authentication 啟用「電子郵件／密碼」。若原瀏覽器仍保有匿名登入，建立帳號會保留該 UID 與原資料；登入另一個既有帳號不會合併舊資料。</p>
+</section>
+<div id="connection-error" class="hidden p-4 bg-red-50 text-red-800 border-b"><p id="connection-error-text" class="whitespace-pre-wrap break-words select-text"></p><button onclick="location.reload()" class="border rounded p-2 mt-2">重新載入</button></div>
+<!-- 主畫面內容區 -->
+    <main id="app-content" class="flex-1 overflow-y-auto relative pb-32">
+        <!-- 載入中畫面 -->
+        <div id="view-loading" class="flex flex-col items-center justify-center h-full text-gray-400 gap-3">
             <i class="fas fa-circle-notch fa-spin text-3xl text-blue-500"></i>
             <p>載入雲端資料中...</p>
         </div>
+        <!-- 1. 評分頁面 -->
+        <div id="view-record" class="hidden p-4 fade-in">
+            <!-- 科目切換 -->
+            <div class="mb-4">
+                <label class="block text-xs text-gray-500 font-bold mb-1">當前科目 / 節數</label>
+                <select id="select-subject" class="w-full p-2 bg-white border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    <option value="日常常規">日常常規</option>
+                    <option value="早自習">早自習</option>
+                    <option value="國語">國語</option>
+                    <option value="數學">數學</option>
+                    <option value="英文">英文</option>
+                </select>
+            </div>
+            <!-- 小組快選 -->
+            <div class="mb-4">
+                <div class="flex justify-between items-end mb-2">
+                    <label class="block text-xs text-gray-500 font-bold">小組快選</label>
+                    <button id="btn-select-all" class="text-xs text-blue-600 font-bold bg-blue-50 px-2 py-1 rounded">全班全選</button>
+                </div>
+                <div id="group-buttons" class="flex gap-2 overflow-x-auto no-scrollbar pb-2">
+                    <!-- 小組按鈕會從 JS 產生 -->
+                </div>
+            </div>
+            <!-- 學生網格 -->
+            <label class="block text-xs text-gray-500 font-bold mb-2">選擇學生</label>
+            <div id="student-grid" class="grid grid-cols-5 gap-2 mb-6">
+                <!-- 學生格子會從 JS 產生 -->
+            </div>
+            <!-- 表現項目區 (與浮動列連動) -->
+            <label class="block text-xs text-gray-500 font-bold mb-2">選擇表現項目</label>
+            <div id="behavior-grid" class="grid grid-cols-2 gap-3 mb-20">
+                <!-- 表現項目會從 JS 產生 -->
+            </div>
+        </div>
+        <!-- 2. 項目管理頁面 -->
+        <div id="view-manage" class="hidden p-4 fade-in">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-bold text-gray-700">加扣分項目管理</h2>
+                <button id="btn-add-behavior" class="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm flex items-center gap-1">
+                    <i class="fas fa-plus"></i> 新增項目
+                </button>
+            </div>
+            <div id="behavior-list" class="flex flex-col gap-3">
+                <!-- 列表會從 JS 產生 -->
+            </div>
+        </div>
+        <!-- 3. 統計與匯出頁面 -->
+        <div id="view-stats" class="hidden p-4 fade-in">
+            <h2 class="text-lg font-bold text-gray-700 mb-4">班級統計紀錄</h2>
+            <!-- 篩選器 -->
+            <div class="bg-white p-3 rounded-xl shadow-sm border border-gray-200 mb-4">
+                <div class="grid grid-cols-2 gap-2 mb-2">
+                    <div>
+                        <label class="text-xs text-gray-500">日期區間</label>
+                        <select id="stat-date-filter" class="w-full text-sm p-1.5 border rounded">
+                            <option value="today">今天</option>
+                            <option value="week">本週</option>
+                            <option value="month">本月</option>
+                            <option value="all">全部</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500">科目</label>
+                        <select id="stat-subject-filter" class="w-full text-sm p-1.5 border rounded">
+                            <option value="all">全部科目</option>
+                            <!-- 選項從 JS 產生 -->
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <!-- 下載按鈕 -->
+            <button id="btn-download-csv" class="w-full mb-4 bg-green-600 text-white py-2.5 rounded-xl font-bold shadow-sm flex justify-center items-center gap-2">
+                <i class="fas fa-file-excel"></i> 匯出統計表 (CSV)
+            </button>
+            <!-- 統計表格 -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <table class="w-full text-sm text-left">
+                    <thead class="bg-gray-50 text-gray-600 font-bold border-b">
+                        <tr>
+                            <th class="p-3">座號</th>
+                            <th class="p-3 text-center">總加分</th>
+                            <th class="p-3 text-center">總扣分</th>
+                            <th class="p-3 text-center">結算總分</th>
+                        </tr>
+                    </thead>
+                    <tbody id="stat-table-body" class="divide-y divide-gray-100">
+                        <!-- 表格從 JS 產生 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <!-- 4. 設定頁面 -->
+        <div id="view-settings" class="hidden p-4 fade-in">
+            <h2 class="text-lg font-bold text-gray-700 mb-4">系統設定</h2><div class="bg-white p-4 rounded-xl mb-4"><p id="teacher-email" class="text-sm break-all mb-2"></p><button id="logout-button" class="border rounded px-4 py-2">登出教師帳號</button></div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-4">
+                <label class="block text-sm font-bold text-gray-700 mb-2">班級人數 (最後座號)</label>
+                <div class="flex items-center gap-3">
+                    <input type="number" id="setting-student-count" class="border p-2 rounded w-24 text-center font-bold" min="1" max="99">
+                    <button id="btn-save-count" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold">儲存人數</button>
+                </div>
+                <p class="text-xs text-gray-500 mt-2">修改人數會自動重整學生網格。</p>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                <div class="flex justify-between items-center mb-3">
+                    <label class="block text-sm font-bold text-gray-700">小組名單設定</label>
+                    <button id="btn-add-group" class="text-blue-600 text-sm font-bold"><i class="fas fa-plus"></i> 新增小組</button>
+                </div>
+                <div id="setting-groups-list" class="flex flex-col gap-3">
+                    <!-- 小組設定清單 -->
+                </div>
+            </div>
+        </div>
     </main>
-
-    <!-- Floating Action Bar -->
+    <!-- 浮動送出面板 (先選學生 + 先選項目 會觸發) -->
     <div id="action-bar" class="fixed bottom-16 left-0 w-full p-4 z-30 action-bar action-bar-hidden pointer-events-none">
         <div class="bg-gray-900 text-white rounded-2xl shadow-2xl p-4 flex flex-col gap-3 pointer-events-auto border border-gray-700">
             <div class="flex justify-between items-center">
                 <div class="flex-1">
-                    <div class="text-xs text-gray-400 mb-1" id="action-subject">日常常規</div>
-                    <div class="font-bold text-lg" id="action-desc">準備紀錄...</div>
+                    <div class="text-xs text-gray-400 mb-1" id="action-target">尚未選擇學生</div>
+                    <div class="font-bold text-lg text-blue-300" id="action-behavior">尚未選擇項目</div>
                 </div>
                 <div class="flex items-center gap-3 bg-gray-800 rounded-xl p-1 border border-gray-700">
-                    <button id="btn-dec-count" class="w-8 h-8 rounded-lg bg-gray-700 text-white hover:bg-gray-600 flex items-center justify-center font-bold active:scale-95 transition-transform">-</button>
-                    <span id="action-count" class="font-bold text-lg w-6 text-center">1</span>
-                    <button id="btn-inc-count" class="w-8 h-8 rounded-lg bg-gray-700 text-white hover:bg-gray-600 flex items-center justify-center font-bold active:scale-95 transition-transform">+</button>
+                    <button id="btn-dec-count" class="w-8 h-8 rounded-lg bg-gray-700 text-white hover:bg-gray-600 flex items-center justify-center font-bold">-</button>
+                    <span id="action-count" class="font-bold text-lg w-6 text-center">1</span><span class="text-xs text-gray-400">次</span>
+                    <button id="btn-inc-count" class="w-8 h-8 rounded-lg bg-gray-700 text-white hover:bg-gray-600 flex items-center justify-center font-bold">+</button>
                 </div>
             </div>
-            <div class="flex gap-2">
-                <button id="btn-clear-selection" class="px-4 py-2 bg-gray-700 text-white rounded-xl font-medium hover:bg-gray-600 active:scale-95 transition-transform">取消</button>
-                <button id="btn-submit-record" class="flex-1 px-4 py-2 bg-blue-500 text-white rounded-xl font-bold hover:bg-blue-600 active:scale-95 transition-transform shadow-[0_0_15px_rgba(59,130,246,0.5)] flex justify-center items-center gap-2">
-                    <i class="fas fa-paper-plane"></i> 確認送出
+            <div class="flex gap-2 mt-2">
+                <button id="btn-cancel-action" class="px-4 py-2 bg-gray-700 text-white rounded-xl font-medium">取消重選</button>
+                <button id="btn-submit-action" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-xl font-bold shadow-[0_0_15px_rgba(37,99,235,0.5)] flex justify-center items-center gap-2">
+                    <i class="fas fa-paper-plane"></i> 寫入雲端紀錄
                 </button>
             </div>
         </div>
     </div>
-
-    <!-- Bottom Navigation -->
+    <!-- 底部導覽列 -->
     <nav class="bg-white border-t border-gray-200 fixed bottom-0 w-full z-20 shadow-[0_-2px_10px_rgba(0,0,0,0.05)] pb-safe">
         <div class="flex justify-around items-center h-16">
-            <button data-tab="record" class="nav-btn flex flex-col items-center justify-center w-full h-full text-blue-600 transition-colors">
+            <button data-tab="record" class="nav-btn flex flex-col items-center justify-center w-full h-full text-blue-600">
                 <i class="fas fa-clipboard-check text-xl mb-1"></i>
                 <span class="text-xs font-medium">評分</span>
             </button>
-            <button data-tab="manage" class="nav-btn flex flex-col items-center justify-center w-full h-full text-gray-400 transition-colors hover:text-blue-500">
+            <button data-tab="manage" class="nav-btn flex flex-col items-center justify-center w-full h-full text-gray-400 hover:text-blue-500">
                 <i class="fas fa-list-check text-xl mb-1"></i>
                 <span class="text-xs font-medium">項目</span>
             </button>
-            <button data-tab="stats" class="nav-btn flex flex-col items-center justify-center w-full h-full text-gray-400 transition-colors hover:text-blue-500">
+            <button data-tab="stats" class="nav-btn flex flex-col items-center justify-center w-full h-full text-gray-400 hover:text-blue-500">
                 <i class="fas fa-chart-pie text-xl mb-1"></i>
                 <span class="text-xs font-medium">統計</span>
             </button>
-            <button data-tab="settings" class="nav-btn flex flex-col items-center justify-center w-full h-full text-gray-400 transition-colors hover:text-blue-500">
+            <button data-tab="settings" class="nav-btn flex flex-col items-center justify-center w-full h-full text-gray-400 hover:text-blue-500">
                 <i class="fas fa-cog text-xl mb-1"></i>
                 <span class="text-xs font-medium">設定</span>
             </button>
         </div>
     </nav>
-
-    <!-- UI Overlays -->
-    <div id="toast-container" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 pointer-events-none w-11/12 max-w-sm"></div>
-    <div id="modal-container" class="fixed inset-0 bg-black bg-opacity-60 z-50 hidden flex-items-center justify-center p-4"></div>
-
+    <!-- 彈出對話框 (Modal) -->
+    <div id="modal-container" class="fixed inset-0 bg-black bg-opacity-60 z-50 hidden flex items-center justify-center p-4 opacity-0 transition-opacity">
+        <div class="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl transform scale-95 transition-transform" id="modal-content">
+            <!-- 內容由 JS 填入 -->
+        </div>
+    </div>
+    <!-- 吐司通知提示 -->
+    <div id="toast-container" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 pointer-events-none w-11/12 max-w-sm transition-all duration-300"></div>
+    <!-- Firebase SDK 引入與邏輯 -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        const appId = 'classroom-manager-pro';
-        
-        // 這是你專屬的 Firebase 金鑰！
+        // 👇==========================================================👇
+        // Firebase Web 設定：沿用附件中的值；請與 Firebase 控制台原文核對。
+        //    如果以後有需要更換，只要覆蓋這個區塊即可。
+        // 👇==========================================================👇
         const firebaseConfig = {
             apiKey: "AIzaSyDHgLHHGsaq1tKFplX65_vK1kHz369s_ho",
             authDomain: "classroom-db-63b1a.firebaseapp.com",
@@ -129,1018 +252,639 @@
             messagingSenderId: "1015916849173",
             appId: "1:1015916849173:web:23ba3dbf221e3d0061861c"
         };
-
-        let app, db, auth, currentUser;
-        
-        // Date helper format YYYY-MM-DD local
-        function getLocalDateString(d) {
-            const year = d.getFullYear();
-            const month = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
-        }
-        const todayStr = getLocalDateString(new Date());
-
+        // 👆==========================================================👆
+        const APP_ID = 'classroom-manager-pro';
+        let app, db, auth, userId;
+let initializeApp, getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword,
+    onAuthStateChanged, signOut, EmailAuthProvider, linkWithCredential,
+    getFirestore, doc, setDoc, getDoc, onSnapshot, collection, addDoc, getDocs, deleteDoc, writeBatch, runTransaction;
+let unsubscribe = [], sessionVersion = 0;
+const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function explainError(error) {
+ const code = error.code || error.name || 'unknown';
+ const help = {
+  'auth/invalid-api-key':'API 金鑰無效：請在 Firebase 專案設定 → 一般 → 網頁應用程式，重新複製整組 firebaseConfig。',
+  'auth/api-key-not-valid.-please-pass-a-valid-api-key.':'API 金鑰無效，請重新複製整組 firebaseConfig。',
+  'auth/operation-not-allowed':'請在 Firebase Authentication → Sign-in method 啟用電子郵件／密碼。',
+  'auth/configuration-not-found':'請先在 Firebase 控制台啟用 Authentication 並設定電子郵件／密碼登入。',
+  'auth/invalid-credential':'帳號或密碼不正確。若尚未建立帳號，請點首次建立教師帳號。',
+  'auth/user-not-found':'找不到此教師帳號。', 'auth/wrong-password':'密碼不正確。',
+  'auth/email-already-in-use':'此電子郵件已有帳號，請改按登入；匿名資料不會自動合併。',
+  'auth/weak-password':'密碼不符合專案密碼政策，請使用更長且包含不同字元的密碼。',
+  'auth/invalid-email':'電子郵件格式不正確。',
+  'auth/network-request-failed':'無法連至 Firebase Authentication，請檢查網路、阻擋擴充功能與 API 金鑰限制。',
+  'auth/unauthorized-domain':'請在 Authentication 設定的授權網域加入 GitHub Pages 的主機名稱。',
+  'permission-denied':'Firestore 拒絕存取。請核對 Firestore 規則是否允許目前教師 UID 讀寫 artifacts/classroom-manager-pro/users/自己的UID 下的資料，並確認 App Check 設定。',
+  'unavailable':'Firestore 暫時無法連線，請檢查網路及 Cloud Firestore 是否已建立。',
+  'not-found':'找不到資料庫，請確認建立的是 Cloud Firestore 的 (default) 資料庫。',
+  'auth/too-many-requests':'請求過於頻繁，請稍後再試。'
+ };
+ return `${code}\n${help[code] || error.message || '請檢查 Firebase 設定與網路。'}`;
+}
+function reportError(error) {
+ console.error(error);
+ document.getElementById('auth-status').textContent = '連線／操作異常';
+ document.getElementById('connection-error').classList.remove('hidden');
+ document.getElementById('connection-error-text').textContent = explainError(error);
+}
+function clearError() { document.getElementById('connection-error').classList.add('hidden'); }
+function connected() { clearError(); document.getElementById('auth-status').textContent = '雲端已同步'; }
+function stopCloud() { unsubscribe.forEach(fn => fn()); unsubscribe = []; }
+function loginView() {
+ stopCloud(); userId = null; state.isLoaded = false; state.records=[]; state.behaviors=[];
+ resetSelection();
+ document.getElementById('view-login').classList.remove('hidden');
+ document.getElementById('app-content').classList.add('hidden');
+ document.querySelector('nav').classList.add('hidden');
+ document.getElementById('auth-status').textContent='請登入教師帳號';
+}
+        // --- 應用程式狀態 ---
         const state = {
-            currentTab: 'record',
             isLoaded: false,
-            selectedStudents: new Set(),
-            selectedBehaviorId: null,
-            actionCount: 1,
-            // 雲端設定狀態
-            settings: {
-                studentsCount: 30,
-                groups: [], 
-                subjects: ['日常常規', '國語', '數學', '英文', '社會', '自然'],
-                currentSubject: '日常常規'
-            },
-            // 統計篩選器狀態
-            statFilters: {
-                subject: 'all',
-                dateType: 'today',
-                startDate: todayStr,
-                endDate: todayStr
-            },
+            studentsCount: 30,
+            groups: [
+                { id: 'g1', name: '第一組', members: [1,2,3,4,5] },
+                { id: 'g2', name: '第二組', members: [6,7,8,9,10] }
+            ],
             behaviors: [],
             records: [],
-            currentFilteredRecords: []
+            // 互動狀態
+            selectedStudents: new Set(),
+            selectedBehavior: null,
+            actionCount: 1,
+            currentSubject: '日常常規'
         };
-
-        const defaultBehaviors = [
+        // 預設加扣分項目
+        const DEFAULT_BEHAVIORS = [
             { name: '上課發言', points: 1, type: 'positive' },
             { name: '作業優良', points: 2, type: 'positive' },
-            { name: '熱心助人', points: 2, type: 'positive' },
             { name: '遲到', points: -1, type: 'negative' },
             { name: '上課吵鬧', points: -1, type: 'negative' },
             { name: '未交作業', points: -2, type: 'negative' }
         ];
-
-        async function initFirebase() {
+        // --- 初始化、教師登入與即時同步 ---
+        async function init() {
+            setupListeners();
+            document.getElementById('login-form').onsubmit = e => { e.preventDefault(); authenticate(false); };
+            document.getElementById('register-submit').onclick = () => authenticate(true);
+            document.getElementById('logout-button').onclick = async () => {
+                try { await signOut(auth); } catch(e) { reportError(e); }
+            };
+            loginView();
+            document.getElementById('auth-status').textContent = '載入 Firebase…';
             try {
-                app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-
-                // 強制使用匿名登入
-                await signInAnonymously(auth);
-                
-                currentUser = auth.currentUser;
-                document.getElementById('auth-status').innerHTML = '<i class="fas fa-cloud text-green-300"></i> 已連線';
-                
-                setupCloudSync();
-            } catch (error) {
-                console.error("Firebase init error:", error);
-                document.getElementById('auth-status').innerHTML = '<i class="fas fa-wifi text-red-300"></i> 連線失敗';
-                showToast("雲端連線失敗，請重新整理頁面", "error");
-            }
+                const version = '11.6.1';
+                const base = `https://www.gstatic.com/firebasejs/${version}/`;
+                const modules = await Promise.all([
+                    import(base + 'firebase-app.js'), import(base + 'firebase-auth.js'), import(base + 'firebase-firestore.js')
+                ]);
+                ({ initializeApp } = modules[0]);
+                ({ getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged,
+                   signOut, EmailAuthProvider, linkWithCredential } = modules[1]);
+                ({ getFirestore, doc, setDoc, getDoc, onSnapshot, collection, addDoc, getDocs, deleteDoc,
+                   writeBatch, runTransaction } = modules[2]);
+                app = initializeApp(firebaseConfig); db = getFirestore(app); auth = getAuth(app);
+                onAuthStateChanged(auth, async user => {
+                    const session = ++sessionVersion; stopCloud(); clearError();
+                    if (!user || user.isAnonymous) { loginView(); return; }
+                    userId = user.uid;
+                    state.records=[]; state.behaviors=[]; state.isLoaded=false;
+                    state.studentsCount=30;
+                    state.groups=[{id:'g1',name:'第一組',members:[1,2,3,4,5]},{id:'g2',name:'第二組',members:[6,7,8,9,10]}];
+                    resetSelection();
+                    document.getElementById('teacher-email').textContent = user.email;
+                    document.getElementById('view-login').classList.add('hidden');
+                    document.getElementById('app-content').classList.remove('hidden');
+                    ['record','manage','stats','settings'].forEach(id => document.getElementById(`view-${id}`).classList.add('hidden'));
+                    document.getElementById('view-loading').classList.remove('hidden');
+                    document.getElementById('auth-status').textContent='讀取雲端資料…';
+                    const timeout=setTimeout(()=>{
+                        if(session===sessionVersion && !state.isLoaded) reportError(new Error('讀取雲端超過 20 秒。請確認網路、Cloud Firestore (default) 資料庫及規則；稍後恢復連線時會繼續載入。'));
+                    },20000);
+                    try { await loadCloudData(session); } catch(e) { if(session===sessionVersion) reportError(e); }
+                    finally { clearTimeout(timeout); }
+                }, reportError);
+            } catch(e) { reportError(e); }
         }
-
-        function setupCloudSync() {
-            if (!currentUser) return;
-            const uid = currentUser.uid;
-            
-            // 1. 同步設定與小組
-            const settingsRef = doc(db, 'artifacts', appId, 'users', uid, 'config', 'settings');
-            onSnapshot(settingsRef, (docSnap) => {
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    state.settings = { ...state.settings, ...data };
-                    
-                    // 產生預設小組 (如果尚未設定)
-                    if (!state.settings.groups || state.settings.groups.length === 0) {
-                        const groups = [];
-                        const groupSize = data.groupSize || 5; 
-                        const numGroups = Math.ceil(state.settings.studentsCount / groupSize);
-                        for(let i=0; i<numGroups; i++) {
-                            const members = [];
-                            for(let j=1; j<=groupSize; j++) {
-                                const sid = i*groupSize + j;
-                                if(sid <= state.settings.studentsCount) members.push(sid);
-                            }
-                            groups.push({ id: `g${Date.now()}_${i}`, name: `第${i+1}組`, members });
-                        }
-                        state.settings.groups = groups;
-                        setDoc(settingsRef, state.settings, {merge: true});
+        async function authenticate(create) {
+            if (!auth) return reportError(new Error('Firebase SDK 尚未載入，請檢查網路後重新載入。'));
+            const form = document.getElementById('login-form');
+            if (!form.reportValidity()) return;
+            const email = document.getElementById('login-email').value.trim();
+            const password = document.getElementById('login-password').value;
+            const buttons = [document.getElementById('login-submit'),document.getElementById('register-submit')];
+            buttons.forEach(b => b.disabled=true); clearError();
+            try {
+                if (create && auth.currentUser?.isAnonymous) {
+                    await linkWithCredential(auth.currentUser, EmailAuthProvider.credential(email,password));
+                    await signInWithEmailAndPassword(auth,email,password);
+                } else if(create) { await createUserWithEmailAndPassword(auth,email,password); }
+                else { await signInWithEmailAndPassword(auth,email,password); }
+                document.getElementById('login-password').value='';
+            } catch(e) { reportError(e); }
+            finally { buttons.forEach(b => b.disabled=false); }
+        }
+        async function loadCloudData(session) {
+            const uid=userId;
+            const settingsRef=doc(db,'artifacts',APP_ID,'users',uid,'settings','main');
+            const behaviorsRef=collection(db,'artifacts',APP_ID,'users',uid,'behaviors');
+            // 交易確保首次初始化只執行一次；刪除全部項目後也不會自動長回來。
+            await runTransaction(db, async transaction => {
+                const settings=await transaction.get(settingsRef);
+                if (!settings.exists()) {
+                    // 不替舊資料強制補預設項目，避免覆蓋教師原先的空白配置。
+                    transaction.set(settingsRef,{ studentsCount:30,groups:state.groups,initialized:true });
+                }
+            });
+            if(session!==sessionVersion) return;
+            const settings=await getDoc(settingsRef);
+            const settingsData=settings.data();
+            // 新帳號初始化預設項目由另一個持久標記保護。
+            if (!settingsData.defaultsChecked) {
+                const existing=await getDocs(behaviorsRef);
+                if(session!==sessionVersion) return;
+                const batch=writeBatch(db);
+                if(existing.empty && !settingsData.initialized) {
+                    // 舊帳號空白清單保持不變。
+                } else if(existing.empty && settingsData.initialized) {
+                    DEFAULT_BEHAVIORS.forEach((b,i)=>batch.set(doc(behaviorsRef,`default-${i+1}`),b));
+                }
+                batch.set(settingsRef,{defaultsChecked:true},{merge:true});
+                await batch.commit();
+            }
+            if(session!==sessionVersion) return;
+            const listen=(ref,callback)=>new Promise((resolve,reject)=>{
+                let first=true;
+                const off=onSnapshot(ref,{includeMetadataChanges:true},snap=>{
+                    if(session!==sessionVersion) return;
+                    callback(snap);
+                    if(!snap.metadata.fromCache) {
+                        if(first) { first=false; resolve(); }
                     }
-                } else {
-                    setDoc(settingsRef, state.settings);
-                }
-                checkAllLoaded();
-            }, (err) => console.error(err));
-
-            // 2. 同步行為項目
-            const behaviorsRef = collection(db, 'artifacts', appId, 'users', uid, 'behaviors');
-            onSnapshot(behaviorsRef, (snapshot) => {
-                state.behaviors = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                if (snapshot.empty && !state.behaviorsInitialized) {
-                    state.behaviorsInitialized = true;
-                    defaultBehaviors.forEach(b => {
-                        addDoc(collection(db, 'artifacts', appId, 'users', uid, 'behaviors'), b);
-                    });
-                }
-                checkAllLoaded();
-            }, (err) => console.error(err));
-
-            // 3. 同步紀錄
-            const recordsRef = collection(db, 'artifacts', appId, 'users', uid, 'records');
-            onSnapshot(recordsRef, (snapshot) => {
-                state.records = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                state.records.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-                checkAllLoaded();
-            }, (err) => console.error(err));
-        }
-
-        let loadChecks = 0;
-        function checkAllLoaded() {
-            loadChecks++;
-            if (loadChecks >= 3 && !state.isLoaded) {
-                state.isLoaded = true;
-                renderApp();
-            } else if (state.isLoaded) {
-                renderApp(); 
-            }
-        }
-
-        function renderApp() {
-            const content = document.getElementById('app-content');
-            content.innerHTML = '';
-            
-            switch(state.currentTab) {
-                case 'record': content.appendChild(createRecordView()); break;
-                case 'manage': content.appendChild(createManageView()); break;
-                case 'stats': content.appendChild(createStatsView()); break;
-                case 'settings': content.appendChild(createSettingsView()); break;
-            }
-            updateActionBar();
-        }
-
-        function createRecordView() {
-            const container = document.createElement('div');
-            container.className = 'fade-in flex flex-col gap-5';
-
-            // 1. 科目選擇
-            const subjectDiv = document.createElement('div');
-            subjectDiv.className = 'bg-white p-3 rounded-xl shadow-sm border border-gray-200 flex items-center justify-between sticky top-0 z-10';
-            const selectOptions = state.settings.subjects.map(s => 
-                `<option value="${s}" ${state.settings.currentSubject === s ? 'selected' : ''}>${s}</option>`
-            ).join('');
-            subjectDiv.innerHTML = `
-                <div class="flex items-center gap-2">
-                    <i class="fas fa-book-open text-blue-500"></i>
-                    <span class="font-bold text-gray-700">當前紀錄：</span>
-                </div>
-                <select id="subject-selector" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2">
-                    ${selectOptions}
-                </select>
-            `;
-            container.appendChild(subjectDiv);
-
-            // 2. 項目選擇
-            const behaviorsSection = document.createElement('div');
-            behaviorsSection.innerHTML = `<div class="flex justify-between items-end mb-3 ml-1"><h2 class="text-sm font-bold text-gray-500">1. 選擇表現項目</h2><span class="text-xs text-gray-400">可先選項目或先選學生</span></div>`;
-            const behaviorsGrid = document.createElement('div');
-            behaviorsGrid.className = 'grid grid-cols-3 gap-2';
-
-            state.behaviors.forEach(b => {
-                const isPositive = b.type === 'positive';
-                const isSelected = state.selectedBehaviorId === b.id;
-                const btn = document.createElement('button');
-                
-                let baseClasses = `p-2 rounded-xl flex flex-col items-center justify-center border transition-all duration-200 relative `;
-                if (isSelected) {
-                    baseClasses += `bg-blue-600 border-blue-700 text-white shadow-md transform scale-105 ring-2 ring-blue-300 ring-offset-1`;
-                } else {
-                    baseClasses += isPositive ? 'bg-green-50 border-green-100 text-green-700 hover:bg-green-100' : 'bg-red-50 border-red-100 text-red-700 hover:bg-red-100';
-                }
-
-                btn.className = baseClasses;
-                btn.innerHTML = `
-                    <span class="font-bold text-sm mb-1 line-clamp-1">${b.name}</span>
-                    <span class="text-xs font-semibold px-2 py-0.5 rounded-full ${isSelected ? 'bg-white/20' : (isPositive ? 'bg-green-100' : 'bg-red-100')}">${isPositive ? '+' : ''}${b.points}</span>
-                    ${isSelected ? '<div class="absolute -top-1 -right-1 w-4 h-4 bg-blue-500 rounded-full border-2 border-white"></div>' : ''}
-                `;
-                btn.onclick = () => toggleBehavior(b.id);
-                behaviorsGrid.appendChild(btn);
+                },error=>{ if(first){first=false;reject(error);} else reportError(error); });
+                unsubscribe.push(off);
             });
-            behaviorsSection.appendChild(behaviorsGrid);
-            container.appendChild(behaviorsSection);
-
-            // 3. 學生選擇
-            const studentsSection = document.createElement('div');
-            studentsSection.innerHTML = `
-                <div class="flex justify-between items-end mb-3 ml-1 mt-2">
-                    <h2 class="text-sm font-bold text-gray-500">2. 選擇學生 (已選 ${state.selectedStudents.size} 人)</h2>
-                </div>
-            `;
-            
-            // 自訂小組捷徑
-            const groupScroll = document.createElement('div');
-            groupScroll.className = 'flex gap-2 overflow-x-auto no-scrollbar mb-3 pb-1';
-            
-            (state.settings.groups || []).forEach(g => {
-                const btn = document.createElement('button');
-                btn.className = 'whitespace-nowrap px-3 py-1.5 bg-gray-100 text-gray-600 rounded-full text-xs font-bold hover:bg-gray-200 border border-gray-200 active:scale-95 transition-transform';
-                btn.innerText = g.name;
-                btn.onclick = () => toggleCustomGroupSelection(g.members);
-                groupScroll.appendChild(btn);
-            });
-            studentsSection.appendChild(groupScroll);
-
-            // 學生網格
-            const grid = document.createElement('div');
-            grid.className = 'grid grid-cols-5 sm:grid-cols-6 gap-2';
-            for (let i = 1; i <= state.settings.studentsCount; i++) {
+            const waiting=setTimeout(()=>{
+                if(session===sessionVersion && !state.isLoaded)
+                    reportError(new Error('尚未收到伺服器回應。請確認網路、Cloud Firestore (default) 資料庫及 App Check 設定；恢復連線後會繼續載入。'));
+            },15000);
+            try {
+                await Promise.all([
+                    listen(settingsRef,snap=>{
+                        const data=snap.data()||{};
+                        state.studentsCount=Math.min(99,Math.max(1,Number(data.studentsCount)||30));
+                        state.groups=Array.isArray(data.groups)?data.groups:[];
+                        state.selectedStudents=new Set([...state.selectedStudents].filter(n=>n<=state.studentsCount));
+                        renderStudentGrid();renderGroupButtons();renderSettings();checkActionState();
+                    }),
+                    listen(behaviorsRef,snap=>{
+                        state.behaviors=snap.docs.map(d=>({...d.data(),id:d.id}));
+                        if(state.selectedBehavior) state.selectedBehavior=state.behaviors.find(b=>b.id===state.selectedBehavior.id)||null;
+                        renderBehaviors();renderManageList();checkActionState();
+                    }),
+                    listen(collection(db,'artifacts',APP_ID,'users',uid,'records'),snap=>{
+                        state.records=snap.docs.map(d=>({...d.data(),id:d.id}));renderStats();
+                    })
+                ]);
+                if(session!==sessionVersion) return;
+                state.isLoaded=true; connected();
+                document.getElementById('view-loading').classList.add('hidden');
+                document.querySelector('nav').classList.remove('hidden');
+                switchTab('record');
+            } finally { clearTimeout(waiting); }
+        }
+        // --- UI 渲染邏輯 ---
+        function renderStudentGrid() {
+            const grid = document.getElementById('student-grid');
+            grid.innerHTML = '';
+            for (let i = 1; i <= state.studentsCount; i++) {
                 const isSelected = state.selectedStudents.has(i);
                 const btn = document.createElement('button');
-                btn.className = `aspect-square rounded-xl font-bold text-lg flex items-center justify-center transition-all duration-200 ${isSelected ? 'bg-blue-600 text-white shadow-md transform scale-105 ring-2 ring-blue-300 ring-offset-1' : 'bg-white text-gray-700 shadow-sm border border-gray-200 hover:bg-gray-50'}`;
-                btn.innerText = i;
+                btn.className = `student-card h-12 rounded-xl border-2 flex items-center justify-center font-bold text-lg 
+                                 ${isSelected ? 'student-selected text-blue-700' : 'bg-white border-gray-200 text-gray-600'}`;
+                btn.textContent = i;
                 btn.onclick = () => toggleStudent(i);
                 grid.appendChild(btn);
             }
-            studentsSection.appendChild(grid);
-            container.appendChild(studentsSection);
-
-            setTimeout(() => {
-                const sel = document.getElementById('subject-selector');
-                if(sel) {
-                    sel.onchange = async (e) => {
-                        const newSubject = e.target.value;
-                        state.settings.currentSubject = newSubject;
-                        if(currentUser) {
-                            const ref = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'config', 'settings');
-                            await updateDoc(ref, { currentSubject: newSubject });
-                        }
-                    };
-                }
-            }, 0);
-
-            return container;
         }
-
-        window.toggleBehavior = function(id) {
-            if (state.selectedBehaviorId === id) state.selectedBehaviorId = null; 
-            else state.selectedBehaviorId = id;
-            renderApp();
-        }
-
-        window.toggleStudent = function(id) {
-            if (state.selectedStudents.has(id)) state.selectedStudents.delete(id);
-            else state.selectedStudents.add(id);
-            renderApp();
-        }
-
-        window.toggleCustomGroupSelection = function(members) {
-            let allSelected = true;
-            members.forEach(id => {
-                if(!state.selectedStudents.has(id)) allSelected = false;
+        function renderGroupButtons() {
+            const container = document.getElementById('group-buttons');
+            container.innerHTML = '';
+            state.groups.forEach(group => {
+                const btn = document.createElement('button');
+                btn.className = 'whitespace-nowrap px-3 py-1.5 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg text-sm font-bold active:scale-95';
+                btn.textContent = group.name;
+                btn.onclick = () => selectGroup(group.members);
+                container.appendChild(btn);
             });
-            members.forEach(id => {
-                if(allSelected) state.selectedStudents.delete(id);
-                else state.selectedStudents.add(id);
+        }
+        function renderBehaviors() {
+            const grid = document.getElementById('behavior-grid');
+            grid.innerHTML = '';
+            state.behaviors.forEach(b => {
+                const isSelected = state.selectedBehavior?.id === b.id;
+                const isPos = b.type === 'positive';
+                const colorClass = isPos ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200';
+                const sign = isPos ? '+' : '';
+                const btn = document.createElement('button');
+                btn.className = `behavior-card p-3 rounded-xl border-2 text-left transition-all ${colorClass} ${isSelected ? 'behavior-selected' : ''}`;
+                btn.innerHTML = `
+                    <div class="font-bold mb-1 text-gray-800">${esc(b.name)}</div>
+                    <div class="text-xs font-bold ${isPos ? 'text-green-600' : 'text-red-600'}">${sign}${b.points} 分</div>
+                `;
+                btn.onclick = () => selectBehavior(b);
+                grid.appendChild(btn);
             });
-            renderApp();
         }
-
-        window.clearSelection = function() {
-            state.selectedStudents.clear();
-            state.selectedBehaviorId = null;
-            state.actionCount = 1;
-            renderApp();
+        function renderManageList() {
+            const list = document.getElementById('behavior-list');
+            list.innerHTML = '';
+            state.behaviors.forEach(b => {
+                const isPos = b.type === 'positive';
+                const div = document.createElement('div');
+                div.className = 'bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex justify-between items-center';
+                div.innerHTML = `
+                    <div>
+                        <div class="font-bold text-gray-800">${esc(b.name)}</div>
+                        <div class="text-xs ${isPos ? 'text-green-600' : 'text-red-600'} font-bold">每次 ${isPos?'+':''}${b.points} 分</div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button class="w-8 h-8 rounded bg-gray-100 text-gray-600 flex items-center justify-center" onclick="editBehavior('${b.id}')"><i class="fas fa-pen text-sm"></i></button>
+                        <button class="w-8 h-8 rounded bg-red-50 text-red-500 flex items-center justify-center" onclick="deleteBehavior('${b.id}')"><i class="fas fa-trash text-sm"></i></button>
+                    </div>
+                `;
+                list.appendChild(div);
+            });
         }
-
-        function updateActionBar() {
+        function renderSettings() {
+            document.getElementById('setting-student-count').value = state.studentsCount;
+            const groupList = document.getElementById('setting-groups-list');
+            groupList.innerHTML = '';
+            state.groups.forEach((g, index) => {
+                const div = document.createElement('div');
+                div.className = 'border p-3 rounded-lg bg-gray-50';
+                div.innerHTML = `
+                    <div class="flex justify-between items-center mb-2">
+                        <input type="text" class="font-bold bg-transparent border-b border-gray-300 focus:border-blue-500 outline-none w-1/2" value="${esc(g.name)}" onchange="updateGroupName(${index}, this.value)">
+                        <button class="text-red-500 text-xs" onclick="removeGroup(${index})"><i class="fas fa-times"></i> 刪除</button>
+                    </div>
+                    <div class="text-xs text-gray-500 mb-1">包含座號 (用逗號分隔)：</div>
+                    <input type="text" class="w-full border p-1.5 rounded text-sm" value="${g.members.join(',')}" onchange="updateGroupMembers(${index}, this.value)">
+                `;
+                groupList.appendChild(div);
+            });
+        }
+        // --- 互動與選取邏輯 (先後順序不拘) ---
+        function toggleStudent(num) {
+            if (state.selectedStudents.has(num)) {
+                state.selectedStudents.delete(num);
+            } else {
+                state.selectedStudents.add(num);
+            }
+            renderStudentGrid();
+            checkActionState();
+        }
+        function selectGroup(membersArray) {
+            membersArray.filter(m => Number.isInteger(m) && m >= 1 && m <= state.studentsCount).forEach(m => state.selectedStudents.add(m));
+            renderStudentGrid();
+            checkActionState();
+        }
+        window.selectBehavior = function(behaviorObj) {
+            if (state.selectedBehavior?.id === behaviorObj.id) {
+                state.selectedBehavior = null; // 取消選取
+            } else {
+                state.selectedBehavior = behaviorObj;
+            }
+            renderBehaviors();
+            checkActionState();
+        }
+        function checkActionState() {
             const bar = document.getElementById('action-bar');
-            if (state.selectedStudents.size > 0 && state.selectedBehaviorId) {
-                const behavior = state.behaviors.find(b => b.id === state.selectedBehaviorId);
-                if (!behavior) return;
-
-                document.getElementById('action-subject').innerText = `科目：${state.settings.currentSubject}`;
-                document.getElementById('action-desc').innerHTML = `給 <span class="text-blue-400 font-bold">${state.selectedStudents.size}</span> 人記 「${behavior.name}」`;
-                document.getElementById('action-count').innerText = state.actionCount;
-                
+            if (state.selectedStudents.size > 0 && state.selectedBehavior) {
+                // 兩者都選了，彈出確認面板
+                document.getElementById('action-target').textContent = `已選擇 ${state.selectedStudents.size} 位學生`;
+                const isPos = state.selectedBehavior.type === 'positive';
+                const sign = isPos ? '+' : '';
+                document.getElementById('action-behavior').textContent = `${state.selectedBehavior.name} (${sign}${state.selectedBehavior.points}分)`;
                 bar.classList.remove('action-bar-hidden');
                 bar.classList.add('action-bar-visible');
             } else {
-                bar.classList.remove('action-bar-visible');
                 bar.classList.add('action-bar-hidden');
+                bar.classList.remove('action-bar-visible');
             }
         }
-
-        document.getElementById('btn-inc-count').onclick = () => {
-            if(state.actionCount < 10) state.actionCount++;
-            updateActionBar();
-        };
-        document.getElementById('btn-dec-count').onclick = () => {
-            if(state.actionCount > 1) state.actionCount--;
-            updateActionBar();
-        };
-        document.getElementById('btn-clear-selection').onclick = window.clearSelection;
-        
-        document.getElementById('btn-submit-record').onclick = async () => {
-            if (!currentUser || !state.selectedBehaviorId || state.selectedStudents.size === 0) return;
-            
-            const btn = document.getElementById('btn-submit-record');
-            btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> 處理中...`;
+        function resetSelection() {
+            state.selectedStudents.clear();
+            state.selectedBehavior = null;
+            state.actionCount = 1;
+            document.getElementById('action-count').textContent = state.actionCount;
+            renderStudentGrid();
+            renderBehaviors();
+            checkActionState();
+        }
+        // --- 寫入資料庫 ---
+        async function submitRecord() {
+            if (!userId || !state.isLoaded || state.selectedStudents.size === 0 || !state.selectedBehavior || document.getElementById("btn-submit-action").disabled) return;
+            const btn = document.getElementById('btn-submit-action');
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 儲存中...';
             btn.disabled = true;
-
-            const behavior = state.behaviors.find(b => b.id === state.selectedBehaviorId);
-            const studentsArray = Array.from(state.selectedStudents).sort((a,b)=>a-b);
-            
-            const recordData = {
-                timestamp: new Date().toISOString(),
-                subject: state.settings.currentSubject,
-                studentIds: studentsArray,
-                behaviorId: behavior.id,
-                behaviorName: behavior.name,
-                points: behavior.points,
-                count: state.actionCount,
-                totalChange: behavior.points * state.actionCount
-            };
-
+            const subject = document.getElementById('select-subject').value;
+            const dateStr = new Date().toISOString();
             try {
-                await addDoc(collection(db, 'artifacts', appId, 'users', currentUser.uid, 'records'), recordData);
-                showToast(`已成功紀錄 ${studentsArray.length} 位學生的表現`, 'success');
-                window.clearSelection();
+                const recordsRef = collection(db, 'artifacts', APP_ID, 'users', userId, 'records');
+                // 批次新增每位學生的紀錄
+                const batch=writeBatch(db);
+                const behavior={...state.selectedBehavior};
+                const count=state.actionCount;
+                const students=[...state.selectedStudents];
+                students.forEach(studentId => batch.set(doc(recordsRef), {
+                    studentId,behaviorId:behavior.id,behaviorName:behavior.name,
+                    points:behavior.points,type:behavior.type,count,
+                    totalPoints:behavior.points*count,subject,timestamp:dateStr
+                }));
+                await batch.commit();
+                showToast(`已成功為 ${students.length} 人記錄「${behavior.name}」`, 'success');
+                connected(); resetSelection();
             } catch (error) {
-                console.error("Error adding document: ", error);
-                showToast("新增紀錄失敗", "error");
+                console.error("寫入錯誤:", error);
+                reportError(error);
             } finally {
-                btn.innerHTML = `<i class="fas fa-paper-plane"></i> 確認送出`;
+                btn.innerHTML = '<i class="fas fa-paper-plane"></i> 寫入雲端紀錄';
                 btn.disabled = false;
             }
-        };
-
-        function createManageView() {
-            const container = document.createElement('div');
-            container.className = 'fade-in flex flex-col gap-6';
-
-            const formSection = document.createElement('div');
-            formSection.className = 'bg-white p-4 rounded-xl shadow-sm border border-gray-200';
-            formSection.innerHTML = `
-                <h2 class="text-base font-bold text-gray-800 mb-4">新增表現項目</h2>
-                <div class="space-y-3">
-                    <div>
-                        <input type="text" id="new-item-name" placeholder="項目名稱 (例如: 遲到)" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm">
-                    </div>
-                    <div class="flex gap-3">
-                        <select id="new-item-type" class="w-1/3 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white text-sm">
-                            <option value="positive">加分</option>
-                            <option value="negative">扣分</option>
-                        </select>
-                        <input type="number" id="new-item-points" placeholder="分數 (如: 1)" min="1" value="1" class="w-1/3 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none text-sm">
-                        <button id="btn-add-behavior" class="w-1/3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 shadow-sm active:scale-95 transition-transform text-sm">新增</button>
-                    </div>
-                </div>
-            `;
-            container.appendChild(formSection);
-
-            const listSection = document.createElement('div');
-            listSection.innerHTML = `<h2 class="text-sm font-bold text-gray-500 mb-3 ml-1">現有項目管理</h2>`;
-            const listDiv = document.createElement('div');
-            listDiv.className = 'space-y-2';
-
-            state.behaviors.forEach(b => {
-                const isPositive = b.type === 'positive';
-                const itemDiv = document.createElement('div');
-                itemDiv.className = 'flex justify-between items-center bg-white p-3 rounded-lg shadow-sm border border-gray-100';
-                itemDiv.innerHTML = `
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${isPositive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">
-                            ${isPositive ? '+' : ''}${b.points}
-                        </div>
-                        <span class="font-medium text-gray-800">${b.name}</span>
-                    </div>
-                    <div class="flex gap-1">
-                        <button class="btn-edit-behavior text-gray-400 hover:text-blue-500 p-2 transition-colors" data-id="${b.id}">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn-del-behavior text-gray-400 hover:text-red-500 p-2 transition-colors" data-id="${b.id}">
-                            <i class="fas fa-trash-alt"></i>
-                        </button>
-                    </div>
-                `;
-                listDiv.appendChild(itemDiv);
-            });
-            listSection.appendChild(listDiv);
-            container.appendChild(listSection);
-
-            setTimeout(() => {
-                document.getElementById('btn-add-behavior').onclick = async () => {
-                    const name = document.getElementById('new-item-name').value.trim();
-                    const type = document.getElementById('new-item-type').value;
-                    let points = parseInt(document.getElementById('new-item-points').value);
-                    if (!name || !points || points <= 0) return showToast('請填寫正確資訊', 'error');
-                    if (type === 'negative') points = -points;
-                    
-                    if (!currentUser) return;
-                    try {
-                        await addDoc(collection(db, 'artifacts', appId, 'users', currentUser.uid, 'behaviors'), { name, type, points });
-                        showToast('新增成功', 'success');
-                    } catch(e) { showToast('新增失敗', 'error'); }
-                };
-
-                document.querySelectorAll('.btn-edit-behavior').forEach(btn => {
-                    btn.onclick = (e) => window.editBehaviorModal(e.currentTarget.getAttribute('data-id'));
-                });
-                document.querySelectorAll('.btn-del-behavior').forEach(btn => {
-                    btn.onclick = (e) => window.confirmDeleteBehavior(e.currentTarget.getAttribute('data-id'));
-                });
-            }, 0);
-
-            return container;
         }
-
-        window.editBehaviorModal = function(id) {
-            const b = state.behaviors.find(x => x.id === id);
-            if(!b) return;
-            showModal(`
-                <div class="bg-white rounded-2xl p-6 w-full max-w-sm mx-auto shadow-2xl">
-                    <h3 class="text-lg font-bold text-gray-800 mb-4">編輯項目</h3>
-                    <div class="space-y-3 mb-6">
-                        <div>
-                            <label class="block text-xs text-gray-500 mb-1">項目名稱</label>
-                            <input type="text" id="edit-item-name" value="${b.name}" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 text-sm">
-                        </div>
-                        <div class="flex gap-3">
-                            <div class="flex-1">
-                                <label class="block text-xs text-gray-500 mb-1">加/扣分</label>
-                                <select id="edit-item-type" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 bg-white text-sm">
-                                    <option value="positive" ${b.type === 'positive' ? 'selected' : ''}>加分</option>
-                                    <option value="negative" ${b.type === 'negative' ? 'selected' : ''}>扣分</option>
-                                </select>
-                            </div>
-                            <div class="flex-1">
-                                <label class="block text-xs text-gray-500 mb-1">分值</label>
-                                <input type="number" id="edit-item-points" value="${Math.abs(b.points)}" min="1" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 text-sm">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="flex gap-3">
-                        <button id="modal-cancel-edit" class="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl font-medium">取消</button>
-                        <button id="modal-confirm-edit" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-xl font-medium shadow-md shadow-blue-500/30">儲存變更</button>
-                    </div>
-                </div>
-            `);
-
-            document.getElementById('modal-cancel-edit').onclick = closeModal;
-            document.getElementById('modal-confirm-edit').onclick = async () => {
-                const name = document.getElementById('edit-item-name').value.trim();
-                const type = document.getElementById('edit-item-type').value;
-                let points = parseInt(document.getElementById('edit-item-points').value);
-                if (!name || !points || points <= 0) return showToast('資料錯誤', 'error');
-                if (type === 'negative') points = -points;
-                
-                closeModal();
-                if(!currentUser) return;
-                try {
-                    await updateDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid, 'behaviors', id), { name, type, points });
-                    showToast('項目已更新', 'success');
-                } catch(e) { showToast('更新失敗', 'error'); }
-            };
-        }
-
-        window.confirmDeleteBehavior = function(id) {
-            showModal(`
-                <div class="bg-white rounded-2xl p-6 w-full max-w-sm mx-auto shadow-2xl">
-                    <h3 class="text-lg font-bold text-gray-800 mb-2">確認刪除</h3>
-                    <p class="text-gray-600 mb-6 text-sm">確定要刪除這個項目嗎？歷史紀錄中已登記的分數不會受影響。</p>
-                    <div class="flex gap-3">
-                        <button id="modal-cancel-del" class="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl font-medium">取消</button>
-                        <button id="modal-confirm-del" class="flex-1 px-4 py-2 bg-red-600 text-white rounded-xl font-medium shadow-md shadow-red-500/30">確定刪除</button>
-                    </div>
-                </div>
-            `);
-            document.getElementById('modal-cancel-del').onclick = closeModal;
-            document.getElementById('modal-confirm-del').onclick = async () => {
-                closeModal();
-                if(!currentUser) return;
-                try {
-                    await deleteDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid, 'behaviors', id));
-                    showToast('已刪除項目', 'success');
-                } catch(e) { showToast('刪除失敗', 'error'); }
-            };
-        }
-
-        function createStatsView() {
-            const container = document.createElement('div');
-            container.className = 'fade-in flex flex-col gap-4';
-
-            // Filter UI
-            const filterSection = document.createElement('div');
-            filterSection.className = 'bg-white p-4 rounded-xl shadow-sm border border-gray-200';
-            filterSection.innerHTML = `
-                <div class="flex justify-between items-center mb-3">
-                    <h2 class="text-sm font-bold text-gray-700"><i class="fas fa-filter text-blue-500 mr-1"></i> 資料篩選與統計</h2>
-                    <button id="btn-export-csv" class="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm flex items-center gap-2 transition-colors active:scale-95">
-                        <i class="fas fa-download"></i> 匯出當前名單
-                    </button>
-                </div>
-                <div class="grid grid-cols-2 gap-3 mb-3">
-                    <div>
-                        <label class="block text-xs text-gray-500 mb-1">統計科目 / 常規</label>
-                        <select id="stat-subject" class="w-full text-sm border border-gray-300 rounded-lg p-2 bg-gray-50 focus:ring-blue-500">
-                            <option value="all">全科總計</option>
-                            ${state.settings.subjects.map(s => `<option value="${s}" ${state.statFilters.subject === s ? 'selected':''}>${s}</option>`).join('')}
-                        </select>
-                    </div>
-                    <div>
-                         <label class="block text-xs text-gray-500 mb-1">統計區間捷徑</label>
-                         <select id="stat-quick-date" class="w-full text-sm border border-gray-300 rounded-lg p-2 bg-gray-50 focus:ring-blue-500">
-                            <option value="today" ${state.statFilters.dateType === 'today' ? 'selected':''}>今日</option>
-                            <option value="week" ${state.statFilters.dateType === 'week' ? 'selected':''}>本週 (週一至週日)</option>
-                            <option value="month" ${state.statFilters.dateType === 'month' ? 'selected':''}>本月</option>
-                            <option value="all" ${state.statFilters.dateType === 'all' ? 'selected':''}>所有時間</option>
-                            <option value="custom" ${state.statFilters.dateType === 'custom' ? 'selected':''}>自訂區間</option>
-                         </select>
-                    </div>
-                </div>
-                <div class="flex items-center gap-2 ${state.statFilters.dateType === 'custom' ? 'flex' : 'hidden'}" id="custom-date-range">
-                     <input type="date" id="stat-start" value="${state.statFilters.startDate}" class="flex-1 text-sm border border-gray-300 rounded-lg p-2">
-                     <span class="text-gray-400 text-xs">至</span>
-                     <input type="date" id="stat-end" value="${state.statFilters.endDate}" class="flex-1 text-sm border border-gray-300 rounded-lg p-2">
-                </div>
-            `;
-            container.appendChild(filterSection);
-
-            // Calculate filtered records
-            let filteredRecords = state.records;
-            if(state.statFilters.subject !== 'all') {
-                filteredRecords = filteredRecords.filter(r => r.subject === state.statFilters.subject);
+        // --- 統計與匯出邏輯 ---
+        function renderStats() {
+            const tbody = document.getElementById('stat-table-body');
+            tbody.innerHTML = '';
+            const dateFilter = document.getElementById('stat-date-filter').value;
+            const subjectFilter = document.getElementById('stat-subject-filter').value;
+            // 處理日期範圍
+            const now = new Date();
+            let startDate = new Date(0); // default all
+            if (dateFilter === 'today') {
+                startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            } else if (dateFilter === 'week') {
+                const day = now.getDay() || 7; // Sunday=7
+                startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day + 1);
+            } else if (dateFilter === 'month') {
+                startDate = new Date(now.getFullYear(), now.getMonth(), 1);
             }
-            if(state.statFilters.dateType !== 'all') {
-                const startObj = new Date(state.statFilters.startDate);
-                startObj.setHours(0,0,0,0);
-                const endObj = new Date(state.statFilters.endDate);
-                endObj.setHours(23,59,59,999);
-                filteredRecords = filteredRecords.filter(r => {
-                    const d = new Date(r.timestamp);
-                    return d >= startObj && d <= endObj;
-                });
+            // 初始化所有學生的統計物件
+            const stats = {};
+            for(let i=1; i<=state.studentsCount; i++) {
+                stats[i] = { pos: 0, neg: 0, total: 0 };
             }
-            state.currentFilteredRecords = filteredRecords; // Store for CSV
-
-            const totals = {};
-            for(let i=1; i<=state.settings.studentsCount; i++) totals[i] = 0;
-            filteredRecords.forEach(r => {
-                r.studentIds.forEach(sid => {
-                    if (totals[sid] !== undefined) totals[sid] += r.totalChange;
-                });
-            });
-
-            // Summary Section
-            const summarySection = document.createElement('div');
-            summarySection.className = 'bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden';
-            summarySection.innerHTML = `
-                <div class="max-h-64 overflow-y-auto custom-scrollbar">
-                    <table class="w-full text-sm text-left text-gray-500">
-                        <thead class="text-xs text-gray-700 uppercase bg-gray-100 sticky top-0 z-10 shadow-sm">
-                            <tr>
-                                <th scope="col" class="px-4 py-3">座號</th>
-                                <th scope="col" class="px-4 py-3 text-right">結算總分</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${Object.entries(totals).map(([id, score]) => `
-                                <tr class="bg-white border-b last:border-0 hover:bg-gray-50">
-                                    <td class="px-4 py-2.5 font-medium text-gray-900">${id} 號</td>
-                                    <td class="px-4 py-2.5 text-right font-bold text-base ${score > 0 ? 'text-green-600' : score < 0 ? 'text-red-600' : 'text-gray-400'}">${score > 0 ? '+' : ''}${score}</td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                </div>
-            `;
-            container.appendChild(summarySection);
-
-            // History Section (Filtered)
-            const historySection = document.createElement('div');
-            historySection.innerHTML = `<h2 class="text-sm font-bold text-gray-500 mb-3 ml-1">詳細紀錄明細 (${filteredRecords.length} 筆)</h2>`;
-            const historyList = document.createElement('div');
-            historyList.className = 'space-y-3';
-
-            if (filteredRecords.length === 0) {
-                historyList.innerHTML = `<div class="text-center text-gray-400 py-6 bg-white rounded-xl border border-dashed border-gray-200">此區間內無紀錄</div>`;
-            } else {
-                const recentRecords = filteredRecords.slice(0, 50); 
-                recentRecords.forEach(r => {
-                    const date = new Date(r.timestamp);
-                    const timeStr = `${date.getMonth()+1}/${date.getDate()} ${date.getHours().toString().padStart(2,'0')}:${date.getMinutes().toString().padStart(2,'0')}`;
-                    const isPositive = r.totalChange > 0;
-                    
-                    const item = document.createElement('div');
-                    item.className = 'bg-white p-3 rounded-lg shadow-sm border border-gray-100 relative overflow-hidden';
-                    item.innerHTML = `
-                        <div class="absolute top-0 left-0 w-1 h-full ${isPositive ? 'bg-green-500' : 'bg-red-500'}"></div>
-                        <div class="flex justify-between items-start ml-2">
-                            <div>
-                                <div class="text-xs text-gray-400 mb-1">${timeStr} <span class="bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded ml-1">${r.subject || '無'}</span></div>
-                                <div class="font-medium text-gray-800 text-sm mb-1">${r.behaviorName} (x${r.count})</div>
-                                <div class="text-xs text-gray-600 font-mono">對象: ${r.studentIds.join(', ')} 號</div>
-                            </div>
-                            <div class="flex flex-col items-end gap-2">
-                                <span class="font-bold text-lg ${isPositive ? 'text-green-600' : 'text-red-600'}">${isPositive ? '+' : ''}${r.totalChange}</span>
-                                <button class="btn-del-record text-gray-300 hover:text-red-500 text-sm p-1 transition-colors" data-id="${r.id}"><i class="fas fa-times-circle"></i></button>
-                            </div>
-                        </div>
-                    `;
-                    historyList.appendChild(item);
-                });
-                if(filteredRecords.length > 50) {
-                     historyList.innerHTML += `<div class="text-center text-xs text-gray-400 mt-2">僅顯示最新 50 筆，完整紀錄請匯出 CSV</div>`;
-                }
-            }
-            historySection.appendChild(historyList);
-            container.appendChild(historySection);
-
-            // Filter Event Listeners Setup
-            setTimeout(() => {
-                document.getElementById('stat-subject').onchange = (e) => {
-                    state.statFilters.subject = e.target.value; renderApp();
-                };
-                document.getElementById('stat-quick-date').onchange = (e) => {
-                    const val = e.target.value;
-                    state.statFilters.dateType = val;
-                    const now = new Date();
-                    if (val === 'today') {
-                        state.statFilters.startDate = getLocalDateString(now);
-                        state.statFilters.endDate = getLocalDateString(now);
-                    } else if (val === 'week') {
-                        const day = now.getDay(); const diff = now.getDate() - day + (day == 0 ? -6:1);
-                        const monday = new Date(now.setDate(diff));
-                        state.statFilters.startDate = getLocalDateString(monday);
-                        state.statFilters.endDate = getLocalDateString(new Date());
-                    } else if (val === 'month') {
-                        const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-                        state.statFilters.startDate = getLocalDateString(firstDay);
-                        state.statFilters.endDate = getLocalDateString(new Date());
+            // 過濾與累加
+            state.records.forEach(r => {
+                const rDate = new Date(r.timestamp);
+                if (rDate >= startDate && (subjectFilter === 'all' || r.subject === subjectFilter)) {
+                    if (stats[r.studentId]) {
+                        const pts = r.totalPoints;
+                        if (pts > 0) stats[r.studentId].pos += pts;
+                        else stats[r.studentId].neg += pts;
+                        stats[r.studentId].total += pts;
                     }
-                    renderApp();
-                };
-                const updateCustomDate = () => {
-                    state.statFilters.startDate = document.getElementById('stat-start').value;
-                    state.statFilters.endDate = document.getElementById('stat-end').value;
-                    renderApp();
-                };
-                document.getElementById('stat-start').onchange = updateCustomDate;
-                document.getElementById('stat-end').onchange = updateCustomDate;
-
-                document.getElementById('btn-export-csv').onclick = window.exportCSV;
-                document.querySelectorAll('.btn-del-record').forEach(btn => {
-                    btn.onclick = (e) => window.confirmDeleteRecord(e.currentTarget.getAttribute('data-id'));
-                });
-            }, 0);
-
-            return container;
-        }
-
-        window.exportCSV = function() {
-            const recordsToExport = state.currentFilteredRecords;
-            if(!recordsToExport || recordsToExport.length === 0) {
-                return showToast('目前篩選條件下沒有紀錄', 'error');
-            }
-            
-            let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; 
-            csvContent += "日期,時間,科目/常規,座號,表現項目,單次分數,次數,總變動分數\n";
-
-            recordsToExport.forEach(r => {
-                const date = new Date(r.timestamp);
-                const dateStr = `${date.getFullYear()}/${date.getMonth()+1}/${date.getDate()}`;
-                const timeStr = `${date.getHours().toString().padStart(2,'0')}:${date.getMinutes().toString().padStart(2,'0')}`;
-                const subject = r.subject || '無';
-                
-                r.studentIds.forEach(sid => {
-                    const row = [dateStr, timeStr, subject, sid, r.behaviorName, r.points, r.count, r.totalChange].join(",");
-                    csvContent += row + "\n";
-                });
+                }
             });
-
-            const encodedUri = encodeURI(csvContent);
+            // 渲染表格
+            for(let i=1; i<=state.studentsCount; i++) {
+                const s = stats[i];
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="p-3 font-bold border-b">${i} 號</td>
+                    <td class="p-3 text-center text-green-600 border-b">${s.pos > 0 ? '+'+s.pos : 0}</td>
+                    <td class="p-3 text-center text-red-500 border-b">${s.neg}</td>
+                    <td class="p-3 text-center font-bold text-lg border-b">${s.total}</td>
+                `;
+                tbody.appendChild(tr);
+            }
+        }
+        function downloadCSV() {
+            const dateFilter = document.getElementById('stat-date-filter').options[document.getElementById('stat-date-filter').selectedIndex].text;
+            const subjectFilter = document.getElementById('stat-subject-filter').options[document.getElementById('stat-subject-filter').selectedIndex].text;
+            let csvContent = `班級統計表,時間範圍:${dateFilter},科目:${subjectFilter}\n\n`;
+            csvContent += "座號,總加分,總扣分,結算總分\n";
+            // 抓取畫面上計算好的表格資料
+            const rows = document.querySelectorAll('#stat-table-body tr');
+            rows.forEach(row => {
+                const cols = row.querySelectorAll('td');
+                const rowData = Array.from(cols).map(c => c.innerText.replace('+','')).join(",");
+                csvContent += rowData + "\n";
+            });
+            // 加入 BOM 讓 Excel 正確讀取 UTF-8
+            const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+            const blob = new Blob([bom, csvContent], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `班級紀錄匯出_${getLocalDateString(new Date())}.csv`);
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            const dateStr = new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Taipei'}).format(new Date());
+            link.setAttribute("download", `班級成績統計_${dateStr}.csv`);
+            link.style.visibility = 'hidden';
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-            
-            showToast('CSV 匯出成功', 'success');
+            URL.revokeObjectURL(url);
         }
-
-        window.confirmDeleteRecord = function(id) {
-            showModal(`
-                <div class="bg-white rounded-2xl p-6 w-full max-w-sm mx-auto shadow-2xl">
-                    <h3 class="text-lg font-bold text-gray-800 mb-2">撤銷紀錄</h3>
-                    <p class="text-gray-600 mb-6 text-sm">確定要刪除這筆紀錄嗎？學生的總分將重新計算。</p>
-                    <div class="flex gap-3">
-                        <button id="modal-cancel-record" class="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl font-medium">取消</button>
-                        <button id="modal-confirm-record" class="flex-1 px-4 py-2 bg-red-600 text-white rounded-xl font-medium shadow-md shadow-red-500/30">確定撤銷</button>
-                    </div>
-                </div>
-            `);
-            document.getElementById('modal-cancel-record').onclick = closeModal;
-            document.getElementById('modal-confirm-record').onclick = async () => {
-                closeModal();
-                if(!currentUser) return;
-                try {
-                    await deleteDoc(doc(db, 'artifacts', appId, 'users', currentUser.uid, 'records', id));
-                    showToast('紀錄已撤銷', 'success');
-                } catch(e) { showToast('撤銷失敗', 'error'); }
-            };
-        }
-
-        function createSettingsView() {
-            const container = document.createElement('div');
-            container.className = 'fade-in flex flex-col gap-6';
-
-            // 班級與小組設定
-            const basicSection = document.createElement('div');
-            basicSection.className = 'bg-white p-4 rounded-xl shadow-sm border border-gray-200';
-            
-            const groupsHtml = (state.settings.groups || []).map((g, idx) => `
-                <div class="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-100 mb-2">
-                    <div class="flex-1 overflow-hidden pr-2">
-                        <div class="font-bold text-sm text-gray-800">${g.name}</div>
-                        <div class="text-xs text-gray-500 truncate mt-0.5">成員: ${g.members.length > 0 ? g.members.join(', ') : '無'}</div>
-                    </div>
-                    <div class="flex gap-1">
-                        <button class="btn-edit-group text-blue-500 p-2 hover:bg-blue-50 rounded" data-idx="${idx}"><i class="fas fa-users-cog"></i></button>
-                        <button class="btn-del-group text-red-500 p-2 hover:bg-red-50 rounded" data-idx="${idx}"><i class="fas fa-trash"></i></button>
-                    </div>
-                </div>
-            `).join('');
-            
-            basicSection.innerHTML = `
-                <h2 class="text-base font-bold text-gray-800 mb-4"><i class="fas fa-users text-blue-500 mr-2"></i>班級與小組名單</h2>
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">班級總人數</label>
-                        <div class="flex gap-2">
-                            <input type="number" id="setting-students-count" value="${state.settings.studentsCount}" min="1" max="100" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500">
-                            <button id="btn-save-count" class="bg-gray-800 text-white px-4 rounded-lg text-sm font-medium shadow-sm active:scale-95 transition-transform">儲存人數</button>
-                        </div>
-                        <p class="text-xs text-gray-400 mt-1">更改人數不會刪除現有小組，但評分表會立即變更座號總數。</p>
-                    </div>
-                    
-                    <div class="pt-4 border-t border-gray-100">
-                        <div class="flex justify-between items-center mb-3">
-                            <label class="block text-sm font-medium text-gray-700">自訂小組名單</label>
-                            <button id="btn-add-group" class="text-xs bg-blue-100 text-blue-700 px-3 py-1.5 rounded-lg font-bold hover:bg-blue-200 active:scale-95 transition-transform">+ 新增小組</button>
-                        </div>
-                        <div class="max-h-64 overflow-y-auto custom-scrollbar pr-1">
-                            ${groupsHtml.length > 0 ? groupsHtml : '<div class="text-xs text-gray-400 text-center py-4">尚未設定小組</div>'}
-                        </div>
-                    </div>
-                </div>
-            `;
-            container.appendChild(basicSection);
-
-            // 科目設定
-            const subjectSection = document.createElement('div');
-            subjectSection.className = 'bg-white p-4 rounded-xl shadow-sm border border-gray-200';
-            let subjectsHtml = state.settings.subjects.map((sub, index) => `
-                <div class="flex justify-between items-center bg-gray-50 p-2 rounded-lg border border-gray-100 mb-2">
-                    <span class="text-sm font-medium text-gray-700">${sub}</span>
-                    <button class="btn-del-subject text-gray-400 hover:text-red-500 px-2" data-index="${index}"><i class="fas fa-times"></i></button>
-                </div>
-            `).join('');
-
-            subjectSection.innerHTML = `
-                <h2 class="text-base font-bold text-gray-800 mb-4"><i class="fas fa-book text-emerald-500 mr-2"></i>科目 / 常規標籤設定</h2>
-                <div class="flex gap-2 mb-4">
-                    <input type="text" id="new-subject-name" placeholder="例如：音樂、晨光時間" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 text-sm">
-                    <button id="btn-add-subject" class="bg-emerald-500 text-white px-4 rounded-lg text-sm font-medium hover:bg-emerald-600 shadow-sm">新增</button>
-                </div>
-                <div class="max-h-48 overflow-y-auto custom-scrollbar pr-1">
-                    ${subjectsHtml}
-                </div>
-            `;
-            container.appendChild(subjectSection);
-
+        // --- 項目編輯與設定邏輯 (Modal) ---
+        function showModal(htmlContent) {
+            const container = document.getElementById('modal-container');
+            const content = document.getElementById('modal-content');
+            content.innerHTML = htmlContent;
+            container.classList.remove('hidden');
             setTimeout(() => {
-                document.getElementById('btn-save-count').onclick = async () => {
-                    const count = parseInt(document.getElementById('setting-students-count').value);
-                    if(!count || count < 1) return showToast('人數錯誤', 'error');
-                    if(currentUser) {
-                        const ref = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'config', 'settings');
-                        await updateDoc(ref, { studentsCount: count });
-                        showToast('總人數已更新', 'success');
-                    }
-                };
-
-                document.getElementById('btn-add-group').onclick = async () => {
-                    const groups = state.settings.groups || [];
-                    const newGroup = { id: `g${Date.now()}`, name: `第 ${groups.length + 1} 組`, members: [] };
-                    groups.push(newGroup);
-                    if(currentUser) {
-                        const ref = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'config', 'settings');
-                        await updateDoc(ref, { groups: groups });
-                        showToast('小組已新增', 'success');
-                    }
-                };
-
-                document.querySelectorAll('.btn-edit-group').forEach(btn => {
-                    btn.onclick = (e) => window.editGroupModal(parseInt(e.currentTarget.getAttribute('data-idx')));
-                });
-
-                document.querySelectorAll('.btn-del-group').forEach(btn => {
-                    btn.onclick = async (e) => {
-                        const idx = parseInt(e.currentTarget.getAttribute('data-idx'));
-                        const groups = state.settings.groups.filter((_, i) => i !== idx);
-                        if(currentUser) {
-                            const ref = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'config', 'settings');
-                            await updateDoc(ref, { groups: groups });
-                        }
-                    };
-                });
-
-                document.getElementById('btn-add-subject').onclick = async () => {
-                    const name = document.getElementById('new-subject-name').value.trim();
-                    if(!name) return;
-                    if(state.settings.subjects.includes(name)) return showToast('該名稱已存在', 'error');
-                    const newSubjects = [...state.settings.subjects, name];
-                    if(currentUser) {
-                        const ref = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'config', 'settings');
-                        await updateDoc(ref, { subjects: newSubjects });
-                        showToast('已新增科目', 'success');
-                    }
-                };
-
-                document.querySelectorAll('.btn-del-subject').forEach(btn => {
-                    btn.onclick = async (e) => {
-                        const idx = parseInt(e.currentTarget.getAttribute('data-index'));
-                        const newSubjects = state.settings.subjects.filter((_, i) => i !== idx);
-                        if(currentUser) {
-                            const ref = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'config', 'settings');
-                            await updateDoc(ref, { subjects: newSubjects });
-                            if(state.settings.currentSubject === state.settings.subjects[idx]) {
-                                await updateDoc(ref, { currentSubject: newSubjects[0] || '無' });
-                            }
-                        }
-                    };
-                });
-            }, 0);
-
-            return container;
-        }
-
-        window.editGroupModal = function(idx) {
-            const group = state.settings.groups[idx];
-            let tempMembers = new Set(group.members);
-            
-            let gridHtml = '';
-            for(let i=1; i<=state.settings.studentsCount; i++) {
-                 const isSelected = tempMembers.has(i);
-                 gridHtml += `<button data-id="${i}" class="group-member-btn aspect-square rounded-xl font-bold text-lg transition-colors ${isSelected ? 'bg-blue-500 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}">${i}</button>`;
-            }
-            
-            showModal(`
-                <div class="bg-white rounded-2xl p-6 w-full max-w-sm mx-auto shadow-2xl h-[85vh] flex flex-col">
-                    <h3 class="text-lg font-bold text-gray-800 mb-3">編輯小組</h3>
-                    <div class="mb-4">
-                         <label class="block text-xs text-gray-500 mb-1">小組顯示名稱</label>
-                         <input type="text" id="edit-group-name" value="${group.name}" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500" placeholder="例如: 蘋果組、第一組">
-                    </div>
-                    <div class="text-xs text-gray-500 mb-2 font-medium">點選以加入/移除成員：</div>
-                    <div class="flex-1 overflow-y-auto custom-scrollbar mb-4 bg-gray-50 p-2 rounded-xl border border-gray-100">
-                        <div class="grid grid-cols-5 gap-2" id="group-member-grid">
-                            ${gridHtml}
-                        </div>
-                    </div>
-                    <div class="flex gap-3 mt-auto pt-2">
-                        <button id="modal-cancel-group" class="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold">取消</button>
-                        <button id="modal-confirm-group" class="flex-1 px-4 py-3 bg-blue-600 text-white rounded-xl font-bold shadow-[0_4px_14px_0_rgba(37,99,235,0.39)]">儲存名單</button>
-                    </div>
-                </div>
-            `);
-            
-            document.querySelectorAll('.group-member-btn').forEach(btn => {
-                btn.onclick = (e) => {
-                    const id = parseInt(e.currentTarget.getAttribute('data-id'));
-                    if(tempMembers.has(id)) {
-                        tempMembers.delete(id);
-                        e.currentTarget.classList.replace('bg-blue-500', 'bg-gray-100');
-                        e.currentTarget.classList.replace('text-white', 'text-gray-600');
-                        e.currentTarget.classList.remove('shadow-md');
-                    } else {
-                        tempMembers.add(id);
-                        e.currentTarget.classList.replace('bg-gray-100', 'bg-blue-500');
-                        e.currentTarget.classList.replace('text-gray-600', 'text-white');
-                        e.currentTarget.classList.add('shadow-md');
-                    }
-                };
-            });
-
-            document.getElementById('modal-cancel-group').onclick = closeModal;
-            document.getElementById('modal-confirm-group').onclick = async () => {
-                const newName = document.getElementById('edit-group-name').value.trim();
-                if(!newName) return showToast('名稱不可為空', 'error');
-                
-                group.name = newName;
-                group.members = Array.from(tempMembers).sort((a,b)=>a-b);
-                
-                closeModal();
-                if(currentUser) {
-                    const ref = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'config', 'settings');
-                    await updateDoc(ref, { groups: state.settings.groups });
-                    showToast('小組更新成功', 'success');
-                }
-            };
-        }
-
-        window.showToast = function(message, type = 'info') {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-            const bgClass = type === 'success' ? 'bg-gray-800' : type === 'error' ? 'bg-red-600' : 'bg-gray-800';
-            const icon = type === 'success' ? '<i class="fas fa-check-circle text-green-400"></i>' : type === 'error' ? '<i class="fas fa-exclamation-circle text-white"></i>' : '';
-            toast.className = `toast-enter ${bgClass} text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-3 text-sm font-medium w-full`;
-            toast.innerHTML = `${icon} <span>${message}</span>`;
-            container.appendChild(toast);
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                toast.style.transform = 'translate(-50%, -10px)';
-                toast.style.transition = 'all 0.3s ease';
-                setTimeout(() => toast.remove(), 300);
-            }, 3000);
-        }
-
-        window.showModal = function(htmlContent) {
-            const modal = document.getElementById('modal-container');
-            modal.innerHTML = htmlContent;
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-            setTimeout(() => {
-                modal.children[0].classList.add('scale-100', 'opacity-100');
-                modal.children[0].classList.remove('scale-95', 'opacity-0', 'transition-all');
+                container.classList.remove('opacity-0');
+                content.classList.remove('scale-95');
             }, 10);
         }
-
-        window.closeModal = function() {
-            const modal = document.getElementById('modal-container');
-            if(modal.children.length > 0) {
-                modal.children[0].classList.remove('scale-100', 'opacity-100');
-                modal.children[0].classList.add('scale-95', 'opacity-0');
-                setTimeout(() => {
-                    modal.classList.add('hidden');
-                    modal.classList.remove('flex');
-                }, 200);
-            } else {
-                modal.classList.add('hidden');
+        function hideModal() {
+            const container = document.getElementById('modal-container');
+            const content = document.getElementById('modal-content');
+            container.classList.add('opacity-0');
+            content.classList.add('scale-95');
+            setTimeout(() => {
+                container.classList.add('hidden');
+            }, 300);
+        }
+        window.openBehaviorModal = function(b = null) {
+            const isEdit = b !== null;
+            const name = isEdit ? b.name : '';
+            const points = isEdit ? Math.abs(b.points) : 1;
+            const type = isEdit ? b.type : 'positive';
+            const id = isEdit ? b.id : '';
+            const html = `
+                <div class="bg-gray-50 p-4 border-b font-bold text-lg">${isEdit ? '編輯項目' : '新增項目'}</div>
+                <div class="p-4 flex flex-col gap-3">
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">項目名稱</label>
+                        <input type="text" id="modal-b-name" class="w-full border p-2 rounded focus:outline-none focus:border-blue-500" value="${esc(name)}">
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">類型</label>
+                            <select id="modal-b-type" class="w-full border p-2 rounded bg-white">
+                                <option value="positive" ${type==='positive'?'selected':''}>加分 (+)</option>
+                                <option value="negative" ${type==='negative'?'selected':''}>扣分 (-)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">分數 (不含符號)</label>
+                            <input type="number" id="modal-b-points" class="w-full border p-2 rounded" min="1" value="${points}">
+                        </div>
+                    </div>
+                </div>
+                <div class="p-4 border-t flex justify-end gap-2 bg-gray-50">
+                    <button class="px-4 py-2 text-gray-600 font-bold rounded" onclick="hideModal()">取消</button>
+                    <button class="px-4 py-2 bg-blue-600 text-white font-bold rounded shadow" onclick="saveBehavior('${id}')">儲存</button>
+                </div>
+            `;
+            showModal(html);
+        }
+        window.saveBehavior = async function(id) {
+            const name = document.getElementById('modal-b-name').value.trim();
+            const type = document.getElementById('modal-b-type').value;
+            const pts = Number(document.getElementById('modal-b-points').value);
+            if(!name || !Number.isInteger(pts) || pts < 1) return showToast('請填寫完整資訊', 'error');
+            const finalPoints = type === 'positive' ? pts : -pts;
+            const data = { name, type, points: finalPoints };
+            try {
+                if (id) {
+                    await setDoc(doc(db, 'artifacts', APP_ID, 'users', userId, 'behaviors', id), data);
+                    showToast('已更新項目', 'success');
+                } else {
+                    await addDoc(collection(db, 'artifacts', APP_ID, 'users', userId, 'behaviors'), data);
+                    showToast('已新增項目', 'success');
+                }
+                hideModal();
+            } catch(e) { reportError(e); }
+        }
+        window.deleteBehavior = async function(id) {
+            if(confirm("確定要刪除這個項目嗎？")) {
+                try { await deleteDoc(doc(db, 'artifacts', APP_ID, 'users', userId, 'behaviors', id));
+                showToast('已刪除', 'success'); } catch(e) { reportError(e); }
             }
         }
-
-        document.querySelectorAll('.nav-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const tab = e.currentTarget.getAttribute('data-tab');
-                if(state.currentTab === tab) return;
-                state.currentTab = tab;
-                
-                document.querySelectorAll('.nav-btn').forEach(b => {
-                    b.classList.remove('text-blue-600');
-                    b.classList.add('text-gray-400');
-                });
-                e.currentTarget.classList.remove('text-gray-400');
-                e.currentTarget.classList.add('text-blue-600');
-                
-                if (tab !== 'record') {
-                    state.selectedStudents.clear();
-                    state.selectedBehaviorId = null;
-                    state.actionCount = 1;
-                }
-                
-                if(state.isLoaded) renderApp();
+        window.editBehavior = function(id) {
+            const b = state.behaviors.find(x => x.id === id);
+            if(b) openBehaviorModal(b);
+        }
+        // --- 設定頁儲存邏輯 ---
+        async function saveSettings() {
+            try {
+                await setDoc(doc(db, 'artifacts', APP_ID, 'users', userId, 'settings', 'main'), {
+                    studentsCount: state.studentsCount,
+                    groups: state.groups
+                }, {merge:true});
+                showToast('設定已儲存', 'success');
+                renderStudentGrid(); // 重繪網格
+                renderGroupButtons(); // 重繪快選按鈕
+            } catch(e) { reportError(e); }
+        }
+        window.updateGroupName = (index, val) => { state.groups[index].name = val; saveSettings(); }
+        window.updateGroupMembers = (index, val) => { 
+            // 將逗號字串轉回數字陣列
+            state.groups[index].members = [...new Set(val.split(/[,，、\s]+/).filter(Boolean).map(Number).filter(n => Number.isInteger(n) && n>=1 && n<=state.studentsCount))];
+            saveSettings();
+        }
+        window.removeGroup = (index) => { state.groups.splice(index, 1); renderSettings(); saveSettings(); }
+        document.getElementById('btn-add-group').onclick = () => {
+            state.groups.push({ name: '新小組', id: crypto.randomUUID(), members: [] });
+            renderSettings();
+            saveSettings();
+        }
+        // --- 工具與事件綁定 ---
+        function switchTab(tabId) {
+            if(!state.isLoaded) return;
+            document.getElementById('app-content').scrollTop=0;
+            // 切換畫面
+            ['record', 'manage', 'stats', 'settings'].forEach(id => {
+                document.getElementById(`view-${id}`).classList.add('hidden');
             });
-        });
-
-        document.addEventListener('DOMContentLoaded', () => {
-            initFirebase();
-            
-            // --- PWA 動態設定 (Manifest & Service Worker) ---
-            const manifest = {
-                "name": "班級經營小幫手",
-                "short_name": "班小幫手",
-                "display": "standalone",
-                "background_color": "#f3f4f6",
-                "theme_color": "#2563eb",
-                "icons": [{
-                    "src": "https://cdn-icons-png.flaticon.com/512/1080/1080985.png",
-                    "sizes": "512x512",
-                    "type": "image/png"
-                }]
-            };
-            const manifestBlob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
-            const manifestUrl = URL.createObjectURL(manifestBlob);
-            document.head.insertAdjacentHTML('beforeend', `<link rel="manifest" href="${manifestUrl}">`);
-
-            const swCode = `
-                self.addEventListener('install', (e) => self.skipWaiting());
-                self.addEventListener('activate', (e) => self.clients.claim());
-                self.addEventListener('fetch', (e) => { }); 
-            `;
-            const swBlob = new Blob([swCode], {type: 'application/javascript'});
-            const swUrl = URL.createObjectURL(swBlob);
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register(swUrl).catch(console.error);
+            document.getElementById(`view-${tabId}`).classList.remove('hidden');
+            // 切換按鈕樣式
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                if (btn.dataset.tab === tabId) {
+                    btn.classList.replace('text-gray-400', 'text-blue-600');
+                } else {
+                    btn.classList.replace('text-blue-600', 'text-gray-400');
+                }
+            });
+            // 進入統計頁時更新科目下拉選單並重新渲染
+            if (tabId === 'stats') {
+                const subFilter = document.getElementById('stat-subject-filter');
+                // 保留「全部」選項
+                const currentVal = subFilter.value;
+                subFilter.innerHTML = '<option value="all">全部科目</option>';
+                Array.from(document.getElementById('select-subject').options).forEach(opt => {
+                    subFilter.innerHTML += `<option value="${opt.value}">${opt.value}</option>`;
+                });
+                subFilter.value = currentVal || 'all';
+                renderStats();
             }
-        });
+        }
+        function showToast(msg, type = 'info') {
+            const toast = document.createElement('div');
+            const color = type === 'success' ? 'bg-green-600' : type === 'error' ? 'bg-red-600' : 'bg-gray-800';
+            toast.className = `${color} text-white px-4 py-3 rounded-lg shadow-lg text-sm font-bold flex items-center justify-between transform transition-all translate-y-[-20px] opacity-0`;
+            toast.textContent = msg;
+            document.getElementById('toast-container').appendChild(toast);
+            // 動畫
+            setTimeout(() => { toast.classList.remove('translate-y-[-20px]', 'opacity-0'); }, 10);
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 2500);
+        }
+        function setupListeners() {
+            // 底部選單
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.onclick = () => switchTab(btn.dataset.tab);
+            });
+            // 全選按鈕
+            document.getElementById('btn-select-all').onclick = () => {
+                const allSelected = state.selectedStudents.size === state.studentsCount;
+                if (allSelected) {
+                    state.selectedStudents.clear();
+                } else {
+                    for(let i=1; i<=state.studentsCount; i++) state.selectedStudents.add(i);
+                }
+                renderStudentGrid();
+                checkActionState();
+            };
+            // 浮動控制列
+            document.getElementById('btn-inc-count').onclick = () => {
+                state.actionCount = Math.min(99,state.actionCount + 1);
+                document.getElementById('action-count').textContent = state.actionCount;
+                checkActionState(); // 更新顯示分數
+            };
+            document.getElementById('btn-dec-count').onclick = () => {
+                if (state.actionCount > 1) {
+                    state.actionCount--;
+                    document.getElementById('action-count').textContent = state.actionCount;
+                    checkActionState();
+                }
+            };
+            document.getElementById('btn-cancel-action').onclick = resetSelection;
+            document.getElementById('btn-submit-action').onclick = submitRecord;
+            // 項目管理
+            document.getElementById('btn-add-behavior').onclick = () => openBehaviorModal();
+            // 設定
+            document.getElementById('btn-save-count').onclick = () => {
+                const val = Number(document.getElementById('setting-student-count').value);
+                if(Number.isInteger(val) && val > 0 && val <= 99) { state.studentsCount = val; saveSettings(); }
+            };
+            // 統計篩選
+            document.getElementById('stat-date-filter').onchange = renderStats;
+            document.getElementById('stat-subject-filter').onchange = renderStats;
+            document.getElementById('btn-download-csv').onclick = downloadCSV;
+        }
+        // 啟動應用
+        init();
+        window.addEventListener('offline',()=>{document.getElementById('auth-status').textContent='網路離線，請恢復連線';});
+        if ('serviceWorker' in navigator && location.protocol==='https:') {
+            navigator.serviceWorker.register('./sw.js').catch(e=>console.warn('PWA service worker:',e));
+        }
+        window.hideModal = hideModal;
     </script>
 </body>
 </html>
