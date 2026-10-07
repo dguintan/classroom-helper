@@ -115,12 +115,20 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'classroom-manager-default';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        // 👇 你的專屬 Firebase 金鑰設定 👇
+        const appId = 'classroom-manager-pro';
+        const firebaseConfig = {
+            apiKey: "AIzaSyDHgLHHGsaq1tKFplX65_vK1kHz369s_ho",
+            authDomain: "classroom-db-63b1a.firebaseapp.com",
+            projectId: "classroom-db-63b1a",
+            storageBucket: "classroom-db-63b1a.firebasestorage.app",
+            messagingSenderId: "1015916849173",
+            appId: "1:1015916849173:web:23ba3dbf221e3d0061861c"
+        };
+        // 👆 --------------------------------- 👆
 
         let app, db, auth, currentUser;
         
@@ -142,7 +150,7 @@
             // 雲端設定狀態
             settings: {
                 studentsCount: 30,
-                groups: [], // 新增：支援自訂名單的小組陣列
+                groups: [], 
                 subjects: ['日常常規', '國語', '數學', '英文', '社會', '自然'],
                 currentSubject: '日常常規'
             },
@@ -173,11 +181,8 @@
                 db = getFirestore(app);
                 auth = getAuth(app);
 
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
-                }
+                // 使用匿名登入，確保資料安全且不用記帳號密碼
+                await signInAnonymously(auth);
                 
                 currentUser = auth.currentUser;
                 document.getElementById('auth-status').innerHTML = '<i class="fas fa-cloud text-green-300"></i> 已連線';
