@@ -119,6 +119,11 @@
                     <i class="fas fa-plus"></i> 新增項目
                 </button>
             </div>
+            <section class="bg-white border rounded-xl p-3 mb-4">
+                <div class="flex justify-between items-center mb-2"><h3 class="font-bold">自訂分類管理</h3><button id="btn-add-category" class="text-blue-600 text-sm font-bold px-3 py-2">＋ 新增分類</button></div>
+                <p class="text-xs text-gray-500 mb-3">例如學習表現、生活常規、人際互動。編輯下方項目即可指定分類；舊紀錄會依項目目前的分類統計，原始分數不變。</p>
+                <div id="category-list" class="flex flex-col gap-2"></div>
+            </section>
             <div id="behavior-list" class="flex flex-col gap-3">
                 <!-- 列表會從 JS 產生 -->
             </div>
@@ -147,6 +152,10 @@
                         </select>
                     </div>
                 </div>
+                <div class="grid grid-cols-2 gap-2 mt-2">
+                    <label class="text-xs text-gray-500">自訂分類<select id="stat-category-filter" class="block w-full text-sm p-2 border rounded bg-white"><option value="all">全部分類</option></select></label>
+                    <label class="text-xs text-gray-500">表現項目<select id="stat-behavior-filter" class="block w-full text-sm p-2 border rounded bg-white"><option value="all">全部項目</option></select></label>
+                </div>
                 <div id="stat-custom-range" class="hidden grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
                     <label class="text-sm text-gray-600">開始日期
                         <input id="stat-start-date" type="date" class="block w-full min-w-0 p-2 border rounded-lg mt-1">
@@ -163,12 +172,13 @@
             <button id="btn-download-csv" class="w-full mb-4 bg-green-600 text-white py-2.5 rounded-xl font-bold shadow-sm flex justify-center items-center gap-2">
                 <i class="fas fa-file-excel"></i> 匯出統計表 (CSV)
             </button>
+            <p class="text-xs text-gray-500 mb-3">各欄篩選可同時使用；點開座號下的「各項目明細」，可查看該生各項目的次數及加扣分。</p>
             <!-- 統計表格 -->
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                 <table class="w-full text-sm text-left">
                     <thead class="bg-gray-50 text-gray-600 font-bold border-b">
                         <tr>
-                            <th class="p-3">座號</th>
+                            <th class="p-3">座號／次數</th>
                             <th class="p-3 text-center">總加分</th>
                             <th class="p-3 text-center">總扣分</th>
                             <th class="p-3 text-center">結算總分</th>
@@ -179,6 +189,11 @@
                     </tbody>
                 </table>
             </div>
+            <section class="bg-white border rounded-xl p-3 mt-4">
+                <label class="text-sm font-bold">分類彙總方式<select id="stat-group-by" class="block w-full border rounded p-2 mt-2 bg-white"><option value="category">依自訂分類</option><option value="behavior">依表現項目</option><option value="subject">依科目</option></select></label>
+                <p class="text-xs text-gray-500 my-2">以下合計目前篩選範圍內所有學生的紀錄。</p>
+                <div id="stat-group-summary"></div>
+            </section>
         </div>
         <!-- 歷史紀錄：逐筆核對與刪除 -->
         <div id="view-history" class="hidden p-4 fade-in">
@@ -187,6 +202,25 @@
             <label class="block text-sm mb-3">查看座號
                 <select id="history-student-filter" class="w-full p-2 border rounded-lg bg-white mt-1"><option value="all">全班</option></select>
             </label>
+            <section class="bg-white border rounded-xl p-3 mb-3">
+                <div class="grid grid-cols-2 gap-3">
+                    <label class="text-xs text-gray-500">日期區間<select id="history-date-filter" class="block w-full p-2 border rounded bg-white"><option value="all">全部</option><option value="today">今天</option><option value="week">本週</option><option value="month">本月</option><option value="custom">自訂區間</option></select></label>
+                    <label class="text-xs text-gray-500">科目<select id="history-subject-filter" class="block w-full p-2 border rounded bg-white"><option value="all">全部科目</option></select></label>
+                    <label class="text-xs text-gray-500">自訂分類<select id="history-category-filter" class="block w-full p-2 border rounded bg-white"><option value="all">全部分類</option></select></label>
+                    <label class="text-xs text-gray-500">表現項目<select id="history-behavior-filter" class="block w-full p-2 border rounded bg-white"><option value="all">全部項目</option></select></label>
+                </div>
+                <div id="history-custom-range" class="hidden grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
+                    <label class="text-sm">開始日期<input id="history-start-date" type="date" class="block w-full min-w-0 border p-2 rounded mt-1"></label>
+                    <label class="text-sm">結束日期<input id="history-end-date" type="date" class="block w-full min-w-0 border p-2 rounded mt-1"></label>
+                </div>
+                <p id="history-range-error" class="hidden text-red-700 text-sm mt-2" role="alert"></p>
+                <div class="grid grid-cols-2 gap-3 mt-3">
+                    <label class="text-xs text-gray-500">查詢模式<select id="history-view-mode" class="block w-full p-2 border rounded bg-white"><option value="records">逐筆紀錄</option><option value="summary">彙總統計</option></select></label>
+                    <label class="text-xs text-gray-500">彙總方式<select id="history-group-by" class="block w-full p-2 border rounded bg-white"><option value="category">依自訂分類</option><option value="behavior">依表現項目</option><option value="subject">依科目</option></select></label>
+                </div>
+                <button id="btn-history-csv" class="w-full mt-3 bg-green-600 text-white p-2 rounded font-bold">下載查詢結果與逐筆紀錄（CSV）</button>
+            </section>
+            <div id="history-group-summary" class="hidden bg-white border rounded-xl p-3 mb-3"></div>
             <p id="history-summary" class="text-sm text-gray-500 mb-3" aria-live="polite"></p>
             <div id="history-list" class="flex flex-col gap-3"></div>
             <button id="history-more" class="hidden w-full p-3 mt-4 border rounded-lg bg-white">載入更多紀錄</button>
@@ -338,11 +372,14 @@ function loginView() {
  document.getElementById('auth-status').textContent='請登入教師帳號';
 }
         // --- 應用程式狀態 ---
+        const DEFAULT_CATEGORIES = [{id:'learning',name:'學習表現'},{id:'routine',name:'生活常規'},{id:'interaction',name:'人際互動'}];
         const DEFAULT_SUBJECTS = ['日常常規', '早自習', '國語', '數學', '英文'];
         const state = {
             isLoaded: false,
             studentsCount: 30,
             subjects: [...DEFAULT_SUBJECTS],
+            categories: DEFAULT_CATEGORIES.map(c=>({...c})),
+            archivedBehaviors: {},
             groups: [
                 { id: 'g1', name: '第一組', members: [1,2,3,4,5] },
                 { id: 'g2', name: '第二組', members: [6,7,8,9,10] }
@@ -392,6 +429,7 @@ function loginView() {
                     userId = user.uid;
                     state.records=[]; state.behaviors=[]; state.isLoaded=false;
                     state.studentsCount=30;
+                    state.categories=DEFAULT_CATEGORIES.map(c=>({...c}));state.archivedBehaviors={};
                     state.subjects=[...DEFAULT_SUBJECTS]; state.currentSubject=DEFAULT_SUBJECTS[0];
                     renderSubjects();
                     state.groups=[{id:'g1',name:'第一組',members:[1,2,3,4,5]},{id:'g2',name:'第二組',members:[6,7,8,9,10]}];
@@ -437,9 +475,12 @@ function loginView() {
                 const settings=await transaction.get(settingsRef);
                 if (!settings.exists()) {
                     // 不替舊資料強制補預設項目，避免覆蓋教師原先的空白配置。
-                    transaction.set(settingsRef,{ studentsCount:30,groups:state.groups,subjects:DEFAULT_SUBJECTS,initialized:true });
-                } else if (!Array.isArray(settings.data().subjects)) {
-                    transaction.set(settingsRef,{subjects:DEFAULT_SUBJECTS},{merge:true});
+                    transaction.set(settingsRef,{ studentsCount:30,groups:state.groups,subjects:DEFAULT_SUBJECTS,categories:DEFAULT_CATEGORIES,initialized:true });
+                } else {
+                    const additions={};
+                    if(!Array.isArray(settings.data().subjects)) additions.subjects=DEFAULT_SUBJECTS;
+                    if(!Array.isArray(settings.data().categories)) additions.categories=DEFAULT_CATEGORIES;
+                    if(Object.keys(additions).length) transaction.set(settingsRef,additions,{merge:true});
                 }
             });
             if(session!==sessionVersion) return;
@@ -481,17 +522,19 @@ function loginView() {
                         state.studentsCount=Math.min(99,Math.max(1,Number(data.studentsCount)||30));
                         state.groups=Array.isArray(data.groups)?data.groups:[];
                         state.subjects=normalizeSubjects(data.subjects);
-                        renderSubjects(); renderStats();
+                        state.categories=Array.isArray(data.categories)?data.categories:DEFAULT_CATEGORIES.map(c=>({...c}));
+                        state.archivedBehaviors=data.archivedBehaviors||{};
+                        renderSubjects(); renderCategoryList(); renderManageList(); refreshReportFilters(); renderStats(); renderHistory();
                         state.selectedStudents=new Set([...state.selectedStudents].filter(n=>n<=state.studentsCount));
                         renderStudentGrid();renderGroupButtons();renderSettings();checkActionState();
                     }),
                     listen(behaviorsRef,snap=>{
                         state.behaviors=snap.docs.map(d=>({...d.data(),id:d.id}));
                         if(state.selectedBehavior) state.selectedBehavior=state.behaviors.find(b=>b.id===state.selectedBehavior.id)||null;
-                        renderBehaviors();renderManageList();checkActionState();
+                        renderBehaviors();renderManageList();refreshReportFilters();renderStats();renderHistory();checkActionState();
                     }),
                     listen(collection(db,'artifacts',APP_ID,'users',uid,'records'),snap=>{
-                        state.records=snap.docs.map(d=>({...d.data(),id:d.id}));renderSubjectFilter();renderStats();renderHistory();
+                        state.records=snap.docs.map(d=>({...d.data(),id:d.id}));renderSubjectFilter();refreshReportFilters();renderStats();renderHistory();
                     })
                 ]);
                 if(session!==sessionVersion) return;
@@ -554,6 +597,7 @@ function loginView() {
                 div.innerHTML = `
                     <div>
                         <div class="font-bold text-gray-800">${esc(b.name)}</div>
+                        <div class="text-xs text-gray-500">分類：${esc(categoryLabel(b.categoryId||''))}</div>
                         <div class="text-xs ${isPos ? 'text-green-600' : 'text-red-600'} font-bold">每次 ${isPos?'+':''}${b.points} 分</div>
                     </div>
                     <div class="flex gap-2">
@@ -648,6 +692,7 @@ function loginView() {
                 students.forEach(studentId => batch.set(doc(recordsRef), {
                     studentId,behaviorId:behavior.id,behaviorName:behavior.name,
                     points:behavior.points,type:behavior.type,count,
+                    categoryId:behavior.categoryId||'',categoryName:categoryLabel(behavior.categoryId||''),
                     totalPoints:behavior.points*count,subject,timestamp:dateStr
                 }));
                 await batch.commit();
@@ -688,8 +733,23 @@ function loginView() {
                 const opt=document.createElement('option');opt.value=String(seat);opt.textContent=`${seat} 號`;filter.appendChild(opt);
             });
             filter.value=previous==='all'||seats.includes(Number(previous)) ? previous : 'all';
-            const records=state.records.filter(r=>filter.value==='all'||Number(r.studentId)===Number(filter.value))
-                .sort((a,b)=>(recordDate(b).getTime()||0)-(recordDate(a).getTime()||0)||String(a.id).localeCompare(String(b.id)));
+            const result=calculateReport('history');
+            const records=result.records.slice().sort((a,b)=>(recordDate(b).getTime()||0)-(recordDate(a).getTime()||0)||String(a.id).localeCompare(String(b.id)));
+            document.getElementById('history-custom-range').classList.toggle('hidden',document.getElementById('history-date-filter').value!=='custom');
+            const error=document.getElementById('history-range-error');
+            error.textContent=result.range.error||'';error.classList.toggle('hidden',!result.range.error);
+            document.getElementById('btn-history-csv').disabled=Boolean(result.range.error);
+            const summaryMode=document.getElementById('history-view-mode').value==='summary';
+            const summary=document.getElementById('history-group-summary');
+            summary.classList.toggle('hidden',!summaryMode);
+            document.getElementById('history-list').classList.toggle('hidden',summaryMode);
+            document.getElementById('history-group-by').disabled=!summaryMode;
+            renderGroupedReport(summary,result);
+            if(summaryMode) {
+                document.getElementById('history-summary').textContent=result.range.error?'':`${result.range.label} · 共 ${records.length} 筆、${result.count} 次；加分 ${signed(result.pos)}、扣分 ${result.neg}、淨分 ${signed(result.total)}`;
+                document.getElementById('history-more').classList.add('hidden');
+                return;
+            }
             const list=document.getElementById('history-list');list.innerHTML='';
             document.getElementById('history-summary').textContent=`共 ${records.length} 筆，顯示 ${Math.min(historyLimit,records.length)} 筆`;
             if(!records.length) {
@@ -702,7 +762,7 @@ function loginView() {
                 card.innerHTML=`<div class="flex justify-between items-start gap-3">
                     <div class="min-w-0"><h3 class="font-bold break-words">${esc(record.studentId)} 號 · ${esc(record.behaviorName)}</h3>
                     <p class="text-sm mt-1">${esc(record.count??1)} 次 · <span class="font-bold ${points<0?'text-red-600':'text-green-600'}">${points>0?'+':''}${esc(points)} 分</span></p>
-                    <p class="text-xs text-gray-500 mt-2">${esc(record.subject||'未指定科目')} · ${esc(recordTime(record))}</p></div>
+                    <p class="text-xs text-gray-500 mt-2">${esc(record.subject||'未指定科目')} · ${esc(categoryLabel(recordCategoryId(record),record.categoryName))} · ${esc(recordTime(record))}</p></div>
                 </div>`;
                 const remove=document.createElement('button');remove.type='button';
                 remove.className='mt-3 px-4 py-2 rounded-lg bg-red-50 text-red-700 border border-red-200 font-bold';
@@ -720,7 +780,7 @@ function loginView() {
                 <div class="p-4 flex flex-col gap-2 text-sm">
                     <p class="font-bold">${esc(record.studentId)} 號 · ${esc(record.behaviorName)}</p>
                     <p>${esc(record.count??1)} 次 · ${points>0?'+':''}${esc(points)} 分</p>
-                    <p>${esc(record.subject||'未指定科目')} · ${esc(recordTime(record))}</p>
+                    <p>${esc(record.subject||'未指定科目')} · ${esc(categoryLabel(recordCategoryId(record),record.categoryName))} · ${esc(recordTime(record))}</p>
                     <p class="text-red-700 mt-2">刪除後會從雲端移除，統計會重新計算。此操作無法復原。</p>
                     <p id="record-delete-error" class="text-red-700 whitespace-pre-wrap break-words" role="alert"></p>
                 </div>
@@ -770,14 +830,14 @@ function loginView() {
             date.setUTCDate(date.getUTCDate()+days);return date.toISOString().slice(0,10);
         }
         function taipeiMidnight(value) { return new Date(value+'T00:00:00+08:00').getTime(); }
-        function statisticsRange(now=new Date()) {
-            const mode=document.getElementById('stat-date-filter').value;
+        function statisticsRange(now=new Date(),prefix='stat') {
+            const mode=document.getElementById(`${prefix}-date-filter`).value;
             const today=taipeiToday(now);
             let start,end,label;
             if(mode==='all') return {start:-Infinity,end:Infinity,label:'全部'};
             if(mode==='custom') {
-                start=document.getElementById('stat-start-date').value;
-                end=document.getElementById('stat-end-date').value;
+                start=document.getElementById(`${prefix}-start-date`).value;
+                end=document.getElementById(`${prefix}-end-date`).value;
                 if(!validDate(start)||!validDate(end)) return {error:'請選擇完整的開始日期與結束日期。'};
                 if(start>end) return {error:'開始日期不能晚於結束日期，請調整日期。'};
                 label=`自訂區間：${start} ～ ${end}`;
@@ -793,21 +853,95 @@ function loginView() {
             const nextDay=shiftDate(end,1);
             return {start:taipeiMidnight(start),end:taipeiMidnight(nextDay),label,startDate:start,endDate:end};
         }
-        function calculateStats(now=new Date()) {
-            const range=statisticsRange(now);
-            if(range.error) return {range,rows:[]};
-            const subject=document.getElementById('stat-subject-filter').value;
-            const rows=Array.from({length:state.studentsCount},(_,i)=>({studentId:i+1,pos:0,neg:0,total:0}));
-            state.records.forEach(record=>{
-                const time=recordDate(record).getTime();
-                if(!Number.isFinite(time)||time<range.start||time>=range.end||(subject!=='all'&&record.subject!==subject)) return;
-                const row=rows.find(r=>r.studentId===Number(record.studentId));
-                const points=recordPoints(record);
-                if(!row||!Number.isFinite(points)) return;
-                if(points>0) row.pos+=points;else row.neg+=points;
-                row.total+=points;
+        const signed=value=>value>0?'+'+value:String(value);
+        function recordCategoryId(record) {
+            const behavior=state.behaviors.find(b=>b.id===record.behaviorId);
+            // 在用項目依目前歸類；刪除項目後保留紀錄內的分類快照。
+            return behavior ? (behavior.categoryId||'') : (record.categoryId ?? state.archivedBehaviors?.[record.behaviorId]?.categoryId ?? '');
+        }
+        function categoryLabel(id,fallback='') {
+            if(!id) return '未分類';
+            const category=state.categories.find(c=>c.id===id);
+            return category ? category.name+(category.archived?'（已刪除分類）':'') : (fallback||'歷史分類');
+        }
+        function itemKey(record) { return record.behaviorId ? 'id:'+record.behaviorId : 'name:'+(record.behaviorName||'未指定項目'); }
+        function itemLabel(record) { return state.behaviors.find(b=>b.id===record.behaviorId)?.name || record.behaviorName || '未指定項目'; }
+        function setFilterOptions(id,options,allLabel) {
+            const select=document.getElementById(id),previous=select.value||'all';
+            select.replaceChildren(new Option(allLabel,'all'));
+            options.forEach(([value,label])=>select.add(new Option(label,value)));
+            select.value=[...select.options].some(o=>o.value===previous)?previous:'all';
+        }
+        function refreshReportFilters() {
+            const subjects=[...new Set([...state.subjects,...state.records.map(r=>r.subject||'未指定科目')])];
+            const categories=new Map(state.categories.filter(c=>!c.archived).map(c=>[c.id,c.name]));
+            categories.set('','未分類');
+            state.records.forEach(r=>categories.set(recordCategoryId(r),categoryLabel(recordCategoryId(r),r.categoryName)));
+            const items=new Map(state.behaviors.map(b=>['id:'+b.id,b.name]));
+            state.records.forEach(r=>items.set(itemKey(r),itemLabel(r)));
+            ['stat','history'].forEach(prefix=>{
+                setFilterOptions(`${prefix}-subject-filter`,subjects.map(name=>[name,state.subjects.includes(name)?name:name+'（歷史紀錄）']),'全部科目');
+                setFilterOptions(`${prefix}-category-filter`,[...categories].map(([id,name])=>[id||'uncategorized',name]),'全部分類');
+                setFilterOptions(`${prefix}-behavior-filter`,[...items],'全部項目');
             });
-            return {range,rows};
+        }
+        function filteredRecords(prefix,range) {
+            if(range.error) return [];
+            const subject=document.getElementById(`${prefix}-subject-filter`).value||'all';
+            const category=document.getElementById(`${prefix}-category-filter`).value||'all';
+            const behavior=document.getElementById(`${prefix}-behavior-filter`).value||'all';
+            const student=prefix==='history'?document.getElementById('history-student-filter').value:'all';
+            return state.records.filter(record=>{
+                const time=recordDate(record).getTime(),points=recordPoints(record);
+                return Number.isFinite(time)&&Number.isFinite(points)&&time>=range.start&&time<range.end
+                    &&(subject==='all'||(record.subject||'未指定科目')===subject)
+                    &&(category==='all'||(recordCategoryId(record)||'uncategorized')===category)
+                    &&(behavior==='all'||itemKey(record)===behavior)
+                    &&(student==='all'||Number(record.studentId)===Number(student));
+            });
+        }
+        function emptyTotals() { return {pos:0,neg:0,total:0,count:0,entries:0}; }
+        function addTotals(target,record) {
+            const points=recordPoints(record),count=Number(record.count??1);
+            target.pos+=Math.max(0,points);target.neg+=Math.min(0,points);target.total+=points;
+            target.count+=Number.isFinite(count)&&count>0?count:1;target.entries++;
+        }
+        function aggregateRecords(records,groupBy,studentIds=[]) {
+            const students=new Map(studentIds.map(id=>[Number(id),{studentId:Number(id),...emptyTotals(),items:new Map()}]));
+            const groups=new Map(),report={...emptyTotals(),records,rows:[],groups:[],groupBy};
+            records.forEach(record=>{
+                const studentId=Number(record.studentId);
+                if(!students.has(studentId)) students.set(studentId,{studentId,...emptyTotals(),items:new Map()});
+                const row=students.get(studentId);addTotals(row,record);addTotals(report,record);
+                const key=itemKey(record),categoryId=recordCategoryId(record);
+                // 同一項目在不同分類下的歷史快照分開列，避免混淆。
+                const detailKey=JSON.stringify([key,categoryId]);
+                if(!row.items.has(detailKey)) row.items.set(detailKey,{name:itemLabel(record),category:categoryLabel(categoryId,record.categoryName),...emptyTotals()});
+                addTotals(row.items.get(detailKey),record);
+                const groupKey=groupBy==='subject'?(record.subject||'未指定科目'):groupBy==='behavior'?key:categoryId;
+                const name=groupBy==='subject'?groupKey:groupBy==='behavior'?itemLabel(record):categoryLabel(categoryId,record.categoryName);
+                if(!groups.has(groupKey)) groups.set(groupKey,{name,...emptyTotals(),students:new Set()});
+                const group=groups.get(groupKey);addTotals(group,record);group.students.add(studentId);
+            });
+            report.rows=[...students.values()].sort((a,b)=>a.studentId-b.studentId);
+            report.groups=[...groups.values()].sort((a,b)=>a.name.localeCompare(b.name,'zh-Hant'));
+            return report;
+        }
+        function calculateReport(prefix='stat',now=new Date()) {
+            const range=statisticsRange(now,prefix);
+            const records=filteredRecords(prefix,range);
+            const groupBy=document.getElementById(`${prefix}-group-by`).value||'category';
+            const ids=prefix==='stat'?Array.from({length:state.studentsCount},(_,i)=>i+1):[];
+            return {...aggregateRecords(records,groupBy,ids),range,prefix};
+        }
+        function calculateStats(now=new Date()) { return calculateReport('stat',now); }
+        function totalsTable(groups) {
+            if(!groups.length) return '<p class="text-sm text-gray-500 py-3">目前沒有符合條件的紀錄。</p>';
+            return `<div class="overflow-x-auto"><table class="w-full text-sm whitespace-nowrap"><thead><tr class="bg-gray-50 text-left"><th class="p-2">名稱</th><th class="p-2">次數／筆數</th><th class="p-2">加分</th><th class="p-2">扣分</th><th class="p-2">淨分</th></tr></thead><tbody>${groups.map(g=>`<tr class="border-t"><td class="p-2 whitespace-normal break-words">${esc(g.name)}${g.category?`<div class="text-xs text-gray-500">${esc(g.category)}</div>`:''}</td><td class="p-2">${g.count} 次／${g.entries} 筆</td><td class="p-2 text-green-700">${signed(g.pos)}</td><td class="p-2 text-red-600">${g.neg}</td><td class="p-2 font-bold">${signed(g.total)}</td></tr>`).join('')}</tbody></table></div>`;
+        }
+        function renderGroupedReport(container,result) {
+            if(result.range.error) {container.innerHTML='';return;}
+            container.innerHTML=`<p class="text-sm font-bold mb-2">合計 ${result.count} 次／${result.entries} 筆 · 加分 ${signed(result.pos)} · 扣分 ${result.neg} · 淨分 ${signed(result.total)}</p>${totalsTable(result.groups)}`;
         }
         function renderStats() {
             const custom=document.getElementById('stat-date-filter').value==='custom';
@@ -815,37 +949,59 @@ function loginView() {
             const result=calculateStats();
             const error=document.getElementById('stat-range-error');
             error.textContent=result.range.error||'';error.classList.toggle('hidden',!result.range.error);
-            document.getElementById('stat-range-summary').textContent=result.range.error?'':`統計範圍：${result.range.label}（台灣時間）`;
-            document.getElementById('btn-download-csv').disabled=Boolean(result.range.error);
-            document.getElementById('btn-download-csv').classList.toggle('opacity-50',Boolean(result.range.error));
+            document.getElementById('stat-range-summary').textContent=result.range.error?'':`統計範圍：${result.range.label}（台灣時間）；${result.count} 次／${result.entries} 筆`;
+            const button=document.getElementById('btn-download-csv');button.disabled=Boolean(result.range.error);
+            button.classList.toggle('opacity-50',Boolean(result.range.error));
             const tbody=document.getElementById('stat-table-body');tbody.innerHTML='';
             result.rows.forEach(row=>{
                 const tr=document.createElement('tr');
-                tr.innerHTML=`<td class="p-3 font-bold border-b">${row.studentId} 號</td>
-                    <td class="p-3 text-center text-green-600 border-b">${row.pos>0?'+'+row.pos:0}</td>
-                    <td class="p-3 text-center text-red-500 border-b">${row.neg}</td>
-                    <td class="p-3 text-center font-bold text-lg border-b">${row.total}</td>`;
+                tr.innerHTML=`<td class="p-3 font-bold border-b">${row.studentId} 號<div class="text-xs text-gray-500 font-normal">${row.count} 次</div></td><td class="p-3 text-center text-green-600 border-b">${signed(row.pos)}</td><td class="p-3 text-center text-red-500 border-b">${row.neg}</td><td class="p-3 text-center font-bold text-lg border-b">${signed(row.total)}</td>`;
                 tbody.appendChild(tr);
+                if(row.items.size) {
+                    const detail=document.createElement('tr');
+                    detail.innerHTML=`<td colspan="4" class="px-3 pb-3 border-b"><details><summary class="cursor-pointer text-sm text-blue-700 py-2">${row.studentId} 號各項目明細（${row.items.size} 項）</summary>${totalsTable([...row.items.values()])}</details></td>`;
+                    tbody.appendChild(detail);
+                }
             });
+            renderGroupedReport(document.getElementById('stat-group-summary'),result);
+        }
+        function filterLabel(prefix,kind) {
+            const select=document.getElementById(`${prefix}-${kind}-filter`);
+            return select.options[select.selectedIndex]?.text||'全部';
         }
         function statisticsCSV(result,subjectLabel) {
-            const cell=value=>'"'+String(value??'').replaceAll('"','""')+'"';
-            const lines=[['班級統計表',`時間範圍:${result.range.label}`,`科目:${subjectLabel}`],[],['座號','總加分','總扣分','結算總分']];
-            result.rows.forEach(row=>lines.push([row.studentId,row.pos,row.neg,row.total]));
+            const cell=value=>{
+                // 防止自訂名稱被 Excel 當作公式，數字欄位仍保留數值。
+                let text=String(value??'');
+                if(typeof value==='string'&&/^[\s]*[=+\-@]/.test(text)) text="'"+text;
+                return '"'+text.replaceAll('"','""')+'"';
+            };
+            const prefix=result.prefix||'stat';
+            const groupLabel={category:'自訂分類',behavior:'表現項目',subject:'科目'}[result.groupBy];
+            const lines=[['班級統計與紀錄',`時間範圍：${result.range.label}`,`科目：${subjectLabel||filterLabel(prefix,'subject')}`,`自訂分類：${filterLabel(prefix,'category')}`,`表現項目：${filterLabel(prefix,'behavior')}`]];
+            if(prefix==='history') lines.push(['座號篩選',document.getElementById('history-student-filter').value==='all'?'全班':document.getElementById('history-student-filter').value+' 號']);
+            lines.push([],['每位學生總計'],['座號','次數','紀錄筆數','總加分','總扣分','淨分']);
+            result.rows.forEach(row=>lines.push([row.studentId,row.count,row.entries,row.pos,row.neg,row.total]));
+            lines.push([],['每位學生各項目明細'],['座號','表現項目','自訂分類','次數','紀錄筆數','加分','扣分','淨分']);
+            result.rows.forEach(row=>row.items.forEach(item=>lines.push([row.studentId,item.name,item.category,item.count,item.entries,item.pos,item.neg,item.total])));
+            lines.push([],['依'+groupLabel+'彙總'],[groupLabel,'人數','次數','紀錄筆數','加分','扣分','淨分']);
+            result.groups.forEach(group=>lines.push([group.name,group.students.size,group.count,group.entries,group.pos,group.neg,group.total]));
+            lines.push([],['逐筆原始紀錄'],['紀錄ID','台灣時間','座號','科目','當時項目名稱','目前項目名稱','自訂分類','次數','每次分數','加分','扣分','淨分']);
+            result.records.slice().sort((a,b)=>recordDate(b)-recordDate(a)).forEach(r=>{
+                const pts=recordPoints(r);lines.push([r.id,recordTime(r),Number(r.studentId),r.subject||'未指定科目',r.behaviorName,itemLabel(r),categoryLabel(recordCategoryId(r),r.categoryName),Number(r.count??1),Number(r.points??0),Math.max(0,pts),Math.min(0,pts),pts]);
+            });
             return '\uFEFF'+lines.map(row=>row.map(cell).join(',')).join('\r\n');
         }
-        function downloadCSV() {
-            const result=calculateStats();
-            if(result.range.error){renderStats();showToast(result.range.error,'error');return;}
-            const subject=document.getElementById('stat-subject-filter');
-            const subjectLabel=subject.options[subject.selectedIndex]?.text||'全部科目';
-            const blob=new Blob([statisticsCSV(result,subjectLabel)],{type:'text/csv;charset=utf-8;'});
-            const url=URL.createObjectURL(blob);const link=document.createElement('a');
-            link.href=url;
+        function downloadReport(prefix='stat') {
+            const result=calculateReport(prefix);
+            if(result.range.error) {showToast(result.range.error,'error');return;}
+            const blob=new Blob([statisticsCSV(result)],{type:'text/csv;charset=utf-8;'});
+            const url=URL.createObjectURL(blob),link=document.createElement('a');
             const suffix=result.range.startDate?`${result.range.startDate}_${result.range.endDate}`:'全部';
-            link.download=`班級成績統計_${suffix}.csv`;document.body.appendChild(link);link.click();link.remove();
-            setTimeout(()=>URL.revokeObjectURL(url),1000);
+            link.href=url;link.download=`601_${prefix==='history'?'紀錄查詢':'班級統計'}_${suffix}.csv`;
+            document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
         }
+        function downloadCSV() { downloadReport('stat'); }
         // --- 項目編輯與設定邏輯 (Modal) ---
         function showModal(htmlContent) {
             const container = document.getElementById('modal-container');
@@ -879,6 +1035,7 @@ function loginView() {
                         <label class="block text-xs text-gray-500 mb-1">項目名稱</label>
                         <input type="text" id="modal-b-name" class="w-full border p-2 rounded focus:outline-none focus:border-blue-500" value="${esc(name)}">
                     </div>
+                    <label class="block text-xs text-gray-500">自訂分類<select id="modal-b-category" class="block w-full border p-2 rounded bg-white mt-1"></select></label>
                     <div class="grid grid-cols-2 gap-2">
                         <div>
                             <label class="block text-xs text-gray-500 mb-1">類型</label>
@@ -899,6 +1056,11 @@ function loginView() {
                 </div>
             `;
             showModal(html);
+            const categorySelect=document.getElementById('modal-b-category');
+            categorySelect.add(new Option('未分類',''));
+            state.categories.filter(c=>!c.archived).forEach(c=>categorySelect.add(new Option(c.name,c.id)));
+            categorySelect.value=b?.categoryId||'';
+            if(categorySelect.selectedIndex<0) categorySelect.value='';
         }
         window.saveBehavior = async function(id) {
             const name = document.getElementById('modal-b-name').value.trim();
@@ -906,27 +1068,115 @@ function loginView() {
             const pts = Number(document.getElementById('modal-b-points').value);
             if(!name || !Number.isInteger(pts) || pts < 1) return showToast('請填寫完整資訊', 'error');
             const finalPoints = type === 'positive' ? pts : -pts;
-            const data = { name, type, points: finalPoints };
+            const categoryId=document.getElementById('modal-b-category').value;
+            const data = { name, type, points: finalPoints, categoryId };
+            if(!userId||!state.isLoaded) return;
+            const uid=userId,session=sessionVersion;
             try {
-                if (id) {
-                    await setDoc(doc(db, 'artifacts', APP_ID, 'users', userId, 'behaviors', id), data);
-                    showToast('已更新項目', 'success');
-                } else {
-                    await addDoc(collection(db, 'artifacts', APP_ID, 'users', userId, 'behaviors'), data);
-                    showToast('已新增項目', 'success');
-                }
+                const ref=id?doc(db,'artifacts',APP_ID,'users',uid,'behaviors',id):doc(collection(db,'artifacts',APP_ID,'users',uid,'behaviors'));
+                const settingsRef=doc(db,'artifacts',APP_ID,'users',uid,'settings','main');
+                await runTransaction(db,async transaction=>{
+                    const settings=await transaction.get(settingsRef);
+                    const existing=id?await transaction.get(ref):null;
+                    if(id&&!existing.exists()) throw new Error('此項目已被其他裝置刪除，請重新操作。');
+                    if(categoryId&&!(settings.data()?.categories||DEFAULT_CATEGORIES).some(c=>c.id===categoryId&&!c.archived)) throw new Error('所選分類已變更，請重新開啟項目編輯。');
+                    transaction.set(ref,data,{merge:true});
+                });
+                if(uid!==userId||session!==sessionVersion) return;
+                showToast(id?'已更新項目':'已新增項目','success');
                 hideModal();
             } catch(e) { reportError(e); }
         }
         window.deleteBehavior = async function(id) {
-            if(confirm("確定要刪除這個項目嗎？")) {
-                try { await deleteDoc(doc(db, 'artifacts', APP_ID, 'users', userId, 'behaviors', id));
-                showToast('已刪除', 'success'); } catch(e) { reportError(e); }
+            if(!userId||!state.isLoaded) return;
+            if(confirm('確定刪除這個項目嗎？舊紀錄、分數及最後所屬分類會保留。')) {
+                const uid=userId,session=sessionVersion;
+                try {
+                    const behaviorRef=doc(db,'artifacts',APP_ID,'users',uid,'behaviors',id);
+                    const settingsRef=doc(db,'artifacts',APP_ID,'users',uid,'settings','main');
+                    await runTransaction(db,async transaction=>{
+                        const behavior=await transaction.get(behaviorRef);
+                        const settings=await transaction.get(settingsRef);
+                        if(!behavior.exists()) return;
+                        const archivedBehaviors={...(settings.data()?.archivedBehaviors||{}),[id]:{categoryId:behavior.data().categoryId||''}};
+                        transaction.set(settingsRef,{archivedBehaviors},{merge:true});
+                        transaction.delete(behaviorRef);
+                    });
+                    if(uid===userId&&session===sessionVersion) showToast('已刪除項目，舊紀錄保留','success');
+                } catch(e) { if(uid===userId&&session===sessionVersion) reportError(e); }
             }
         }
         window.editBehavior = function(id) {
             const b = state.behaviors.find(x => x.id === id);
             if(b) openBehaviorModal(b);
+        }
+        function renderCategoryList() {
+            const list=document.getElementById('category-list');list.replaceChildren();
+            const active=state.categories.filter(c=>!c.archived);
+            if(!active.length) list.innerHTML='<p class="text-sm text-gray-500">尚無自訂分類，請按「新增分類」。</p>';
+            active.forEach(category=>{
+                const row=document.createElement('div');row.className='flex justify-between items-center gap-2 border rounded p-2';
+                const label=document.createElement('span');label.className='text-sm break-all';label.textContent=category.name;
+                const controls=document.createElement('div');controls.className='flex gap-1 flex-shrink-0';
+                [['編輯',()=>openCategoryModal(category)],['刪除',()=>deleteCategory(category)]].forEach(([name,action])=>{
+                    const button=document.createElement('button');button.className='px-3 py-2 text-sm rounded '+(name==='刪除'?'text-red-600 bg-red-50':'text-blue-600 bg-blue-50');
+                    button.textContent=name;button.setAttribute('aria-label',name+'分類 '+category.name);button.onclick=action;controls.appendChild(button);
+                });
+                row.append(label,controls);list.appendChild(row);
+            });
+        }
+        let categorySaving=false;
+        function openCategoryModal(category=null) {
+            if(!userId||!state.isLoaded||categorySaving) return;
+            showModal(`<div class="p-4 border-b font-bold text-lg">${category?'編輯':'新增'}分類</div><form id="category-form" class="p-4"><label for="category-name" class="text-sm">分類名稱（最多 30 字）</label><input id="category-name" required maxlength="30" value="${esc(category?.name||'')}" class="w-full border rounded p-2 mt-2"><p class="text-xs text-gray-500 mt-2">分類改名會同步更新統計名稱。</p><div class="flex justify-end gap-2 mt-4"><button id="category-cancel" type="button" class="p-2">取消</button><button id="category-save" class="px-4 py-2 rounded bg-blue-600 text-white">儲存</button></div></form>`);
+            document.getElementById('category-cancel').onclick=hideModal;
+            document.getElementById('category-form').onsubmit=async event=>{
+                event.preventDefault();const name=document.getElementById('category-name').value.trim();
+                if(!name||name.length>30) return showToast('請輸入 1～30 字分類名稱','error');
+                const button=document.getElementById('category-save');button.disabled=true;
+                const saved=await mutateCategory(category?'rename':'add',category?.id||crypto.randomUUID(),name);
+                if(saved) hideModal();else button.disabled=false;
+            };
+            document.getElementById('category-name').focus();
+        }
+        async function deleteCategory(category) {
+            if(!userId||!state.isLoaded||categorySaving) return;
+            if(!confirm(`確定刪除「${category.name}」分類？此分類的項目將改為「未分類」，舊紀錄與原始分數保留。`)) return;
+            await mutateCategory('delete',category.id);
+        }
+        async function mutateCategory(action,id,name) {
+            if(!userId||!state.isLoaded||categorySaving) return false;
+            categorySaving=true;const uid=userId,session=sessionVersion;
+            try {
+                const settingsRef=doc(db,'artifacts',APP_ID,'users',uid,'settings','main');
+                // 刪除分類時，將已指派項目改為未分類，與分類設定一起原子提交。
+                const behaviorDocs=action==='delete'?(await getDocs(collection(db,'artifacts',APP_ID,'users',uid,'behaviors'))).docs:[];
+                if(behaviorDocs.length>400) throw new Error('項目過多，請先將此分類的項目改為未分類，再刪除分類。');
+                const categories=await runTransaction(db,async transaction=>{
+                    const settings=await transaction.get(settingsRef);
+                    const snapshots=[];
+                    for(const behavior of behaviorDocs) snapshots.push(await transaction.get(behavior.ref));
+                    const list=(settings.data()?.categories||DEFAULT_CATEGORIES).map(c=>({...c}));
+                    const target=list.find(c=>c.id===id&&!c.archived);
+                    if(action!=='add'&&!target) throw new Error('分類已被其他裝置修改，請重新操作。');
+                    if(action!=='delete'&&(name==='未分類'||list.some(c=>!c.archived&&c.id!==id&&c.name===name))) throw new Error('分類名稱重複，請使用其他名稱。');
+                    if(action==='add') list.push({id,name});
+                    else if(action==='rename') target.name=name;
+                    else {
+                        target.archived=true;
+                        snapshots.forEach((snapshot,index)=>{
+                            if(snapshot.exists()&&snapshot.data().categoryId===id) transaction.set(behaviorDocs[index].ref,{categoryId:''},{merge:true});
+                        });
+                    }
+                    transaction.set(settingsRef,{categories:list},{merge:true});return list;
+                });
+                if(uid!==userId||session!==sessionVersion) return false;
+                state.categories=categories;
+                if(action==='delete') state.behaviors.forEach(b=>{if(b.categoryId===id) b.categoryId='';});
+                renderCategoryList();renderManageList();refreshReportFilters();renderStats();renderHistory();
+                showToast(action==='delete'?'已刪除分類，所屬項目改為未分類':'分類已儲存','success');return true;
+            } catch(error) {if(uid===userId&&session===sessionVersion) showToast(error.message||'分類儲存失敗','error');return false;}
+            finally {categorySaving=false;}
         }
         // 科目以名稱儲存；歷史紀錄保留當時的名稱，不連動刪除或改名。
         function normalizeSubjects(value) {
@@ -1073,7 +1323,7 @@ function loginView() {
             if(tabId==='history') renderHistory();
             // 進入統計頁時更新科目下拉選單並重新渲染
             if (tabId === 'stats') {
-                renderSubjectFilter();
+                renderSubjectFilter();refreshReportFilters();
                 renderStats();
             }
         }
@@ -1122,6 +1372,7 @@ function loginView() {
             document.getElementById('btn-cancel-action').onclick = resetSelection;
             document.getElementById('btn-submit-action').onclick = submitRecord;
             // 項目管理
+            document.getElementById('btn-add-category').onclick=()=>openCategoryModal();
             document.getElementById('btn-add-behavior').onclick = () => openBehaviorModal();
             // 科目管理
             document.getElementById('btn-add-subject').onclick = () => openSubjectModal();
@@ -1146,6 +1397,13 @@ function loginView() {
             document.getElementById('stat-end-date').onchange = renderStats;
             document.getElementById('stat-subject-filter').onchange = renderStats;
             document.getElementById('btn-download-csv').onclick = downloadCSV;
+            ['stat-category-filter','stat-behavior-filter','stat-group-by'].forEach(id=>document.getElementById(id).onchange=renderStats);
+            document.getElementById('history-start-date').value=today.slice(0,7)+'-01';
+            document.getElementById('history-end-date').value=today;
+            ['history-date-filter','history-start-date','history-end-date','history-subject-filter','history-category-filter','history-behavior-filter','history-view-mode','history-group-by'].forEach(id=>{
+                document.getElementById(id).onchange=()=>{historyLimit=50;renderHistory();};
+            });
+            document.getElementById('btn-history-csv').onclick=()=>downloadReport('history');
         }
         // 啟動應用
         init();

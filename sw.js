@@ -1,6 +1,6 @@
 // Only static application files are cached. Firebase API requests are never cached here.
-// 科目管理版：啟用後清除舊版應用程式快取。
-const CACHE='classroom-601-v4';
+// 分類與明細統計版：啟用後清除舊版應用程式快取。
+const CACHE='classroom-601-v5';
 const FILES=['./','./index.html','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(FILES.map(path=>new Request(new URL(path,self.registration.scope).href,{cache:'reload'}))))));
 self.addEventListener('activate',event=>event.waitUntil((async()=>{
