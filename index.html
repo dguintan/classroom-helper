@@ -132,6 +132,7 @@
                             <option value="today">今天</option>
                             <option value="week">本週</option>
                             <option value="month">本月</option>
+                            <option value="custom">自訂區間</option>
                             <option value="all">全部</option>
                         </select>
                     </div>
@@ -143,6 +144,17 @@
                         </select>
                     </div>
                 </div>
+                <div id="stat-custom-range" class="hidden grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+                    <label class="text-sm text-gray-600">開始日期
+                        <input id="stat-start-date" type="date" class="block w-full min-w-0 p-2 border rounded-lg mt-1">
+                    </label>
+                    <label class="text-sm text-gray-600">結束日期
+                        <input id="stat-end-date" type="date" class="block w-full min-w-0 p-2 border rounded-lg mt-1">
+                    </label>
+                    <p class="text-xs text-gray-500 sm:col-span-2">包含開始與結束日期當天的所有紀錄。</p>
+                </div>
+                <p id="stat-range-error" class="hidden text-sm text-red-700 mt-2" role="alert"></p>
+                <p id="stat-range-summary" class="text-xs text-gray-500 mt-2" aria-live="polite"></p>
             </div>
             <!-- 下載按鈕 -->
             <button id="btn-download-csv" class="w-full mb-4 bg-green-600 text-white py-2.5 rounded-xl font-bold shadow-sm flex justify-center items-center gap-2">
@@ -725,78 +737,95 @@ function loginView() {
                 }
             };
         }
-        // --- 統計與匯出邏輯 ---
-        function renderStats() {
-            const tbody = document.getElementById('stat-table-body');
-            tbody.innerHTML = '';
-            const dateFilter = document.getElementById('stat-date-filter').value;
-            const subjectFilter = document.getElementById('stat-subject-filter').value;
-            // 處理日期範圍
-            const now = new Date();
-            let startDate = new Date(0); // default all
-            if (dateFilter === 'today') {
-                startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-            } else if (dateFilter === 'week') {
-                const day = now.getDay() || 7; // Sunday=7
-                startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day + 1);
-            } else if (dateFilter === 'month') {
-                startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-            }
-            // 初始化所有學生的統計物件
-            const stats = {};
-            for(let i=1; i<=state.studentsCount; i++) {
-                stats[i] = { pos: 0, neg: 0, total: 0 };
-            }
-            // 過濾與累加
-            state.records.forEach(r => {
-                const rDate = new Date(r.timestamp);
-                if (rDate >= startDate && (subjectFilter === 'all' || r.subject === subjectFilter)) {
-                    if (stats[r.studentId]) {
-                        const pts = r.totalPoints;
-                        if (pts > 0) stats[r.studentId].pos += pts;
-                        else stats[r.studentId].neg += pts;
-                        stats[r.studentId].total += pts;
-                    }
-                }
+        // --- 統計與匯出：共用日期篩選，以台灣日期計算 ---
+        function taipeiToday(now=new Date()) {
+            return new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Taipei'}).format(now);
+        }
+        function validDate(value) {
+            if(!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+            const d=new Date(value+'T00:00:00Z');
+            return !Number.isNaN(d.getTime())&&d.toISOString().slice(0,10)===value;
+        }
+        function shiftDate(value,days) {
+            const date=new Date(value+'T00:00:00Z');
+            date.setUTCDate(date.getUTCDate()+days);return date.toISOString().slice(0,10);
+        }
+        function taipeiMidnight(value) { return new Date(value+'T00:00:00+08:00').getTime(); }
+        function statisticsRange(now=new Date()) {
+            const mode=document.getElementById('stat-date-filter').value;
+            const today=taipeiToday(now);
+            let start,end,label;
+            if(mode==='all') return {start:-Infinity,end:Infinity,label:'全部'};
+            if(mode==='custom') {
+                start=document.getElementById('stat-start-date').value;
+                end=document.getElementById('stat-end-date').value;
+                if(!validDate(start)||!validDate(end)) return {error:'請選擇完整的開始日期與結束日期。'};
+                if(start>end) return {error:'開始日期不能晚於結束日期，請調整日期。'};
+                label=`自訂區間：${start} ～ ${end}`;
+            } else if(mode==='week') {
+                const weekday=new Date(today+'T00:00:00Z').getUTCDay()||7;
+                start=shiftDate(today,1-weekday);end=shiftDate(start,6);label=`本週：${start} ～ ${end}`;
+            } else if(mode==='month') {
+                start=today.slice(0,7)+'-01';
+                const next=new Date(start+'T00:00:00Z');next.setUTCMonth(next.getUTCMonth()+1);
+                end=shiftDate(next.toISOString().slice(0,10),-1);label=`本月：${start} ～ ${end}`;
+            } else {start=today;end=today;label=`今天：${today}`;}
+            // 上限使用結束日期的翌日零時，完整包含結束當天。
+            const nextDay=shiftDate(end,1);
+            return {start:taipeiMidnight(start),end:taipeiMidnight(nextDay),label,startDate:start,endDate:end};
+        }
+        function calculateStats(now=new Date()) {
+            const range=statisticsRange(now);
+            if(range.error) return {range,rows:[]};
+            const subject=document.getElementById('stat-subject-filter').value;
+            const rows=Array.from({length:state.studentsCount},(_,i)=>({studentId:i+1,pos:0,neg:0,total:0}));
+            state.records.forEach(record=>{
+                const time=recordDate(record).getTime();
+                if(!Number.isFinite(time)||time<range.start||time>=range.end||(subject!=='all'&&record.subject!==subject)) return;
+                const row=rows.find(r=>r.studentId===Number(record.studentId));
+                const points=recordPoints(record);
+                if(!row||!Number.isFinite(points)) return;
+                if(points>0) row.pos+=points;else row.neg+=points;
+                row.total+=points;
             });
-            // 渲染表格
-            for(let i=1; i<=state.studentsCount; i++) {
-                const s = stats[i];
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td class="p-3 font-bold border-b">${i} 號</td>
-                    <td class="p-3 text-center text-green-600 border-b">${s.pos > 0 ? '+'+s.pos : 0}</td>
-                    <td class="p-3 text-center text-red-500 border-b">${s.neg}</td>
-                    <td class="p-3 text-center font-bold text-lg border-b">${s.total}</td>
-                `;
+            return {range,rows};
+        }
+        function renderStats() {
+            const custom=document.getElementById('stat-date-filter').value==='custom';
+            document.getElementById('stat-custom-range').classList.toggle('hidden',!custom);
+            const result=calculateStats();
+            const error=document.getElementById('stat-range-error');
+            error.textContent=result.range.error||'';error.classList.toggle('hidden',!result.range.error);
+            document.getElementById('stat-range-summary').textContent=result.range.error?'':`統計範圍：${result.range.label}（台灣時間）`;
+            document.getElementById('btn-download-csv').disabled=Boolean(result.range.error);
+            document.getElementById('btn-download-csv').classList.toggle('opacity-50',Boolean(result.range.error));
+            const tbody=document.getElementById('stat-table-body');tbody.innerHTML='';
+            result.rows.forEach(row=>{
+                const tr=document.createElement('tr');
+                tr.innerHTML=`<td class="p-3 font-bold border-b">${row.studentId} 號</td>
+                    <td class="p-3 text-center text-green-600 border-b">${row.pos>0?'+'+row.pos:0}</td>
+                    <td class="p-3 text-center text-red-500 border-b">${row.neg}</td>
+                    <td class="p-3 text-center font-bold text-lg border-b">${row.total}</td>`;
                 tbody.appendChild(tr);
-            }
+            });
+        }
+        function statisticsCSV(result,subjectLabel) {
+            const cell=value=>'"'+String(value??'').replaceAll('"','""')+'"';
+            const lines=[['班級統計表',`時間範圍:${result.range.label}`,`科目:${subjectLabel}`],[],['座號','總加分','總扣分','結算總分']];
+            result.rows.forEach(row=>lines.push([row.studentId,row.pos,row.neg,row.total]));
+            return '\uFEFF'+lines.map(row=>row.map(cell).join(',')).join('\r\n');
         }
         function downloadCSV() {
-            const dateFilter = document.getElementById('stat-date-filter').options[document.getElementById('stat-date-filter').selectedIndex].text;
-            const subjectFilter = document.getElementById('stat-subject-filter').options[document.getElementById('stat-subject-filter').selectedIndex].text;
-            let csvContent = `班級統計表,時間範圍:${dateFilter},科目:${subjectFilter}\n\n`;
-            csvContent += "座號,總加分,總扣分,結算總分\n";
-            // 抓取畫面上計算好的表格資料
-            const rows = document.querySelectorAll('#stat-table-body tr');
-            rows.forEach(row => {
-                const cols = row.querySelectorAll('td');
-                const rowData = Array.from(cols).map(c => c.innerText.replace('+','')).join(",");
-                csvContent += rowData + "\n";
-            });
-            // 加入 BOM 讓 Excel 正確讀取 UTF-8
-            const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
-            const blob = new Blob([bom, csvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement("a");
-            const url = URL.createObjectURL(blob);
-            link.setAttribute("href", url);
-            const dateStr = new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Taipei'}).format(new Date());
-            link.setAttribute("download", `班級成績統計_${dateStr}.csv`);
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
+            const result=calculateStats();
+            if(result.range.error){renderStats();showToast(result.range.error,'error');return;}
+            const subject=document.getElementById('stat-subject-filter');
+            const subjectLabel=subject.options[subject.selectedIndex]?.text||'全部科目';
+            const blob=new Blob([statisticsCSV(result,subjectLabel)],{type:'text/csv;charset=utf-8;'});
+            const url=URL.createObjectURL(blob);const link=document.createElement('a');
+            link.href=url;
+            const suffix=result.range.startDate?`${result.range.startDate}_${result.range.endDate}`:'全部';
+            link.download=`班級成績統計_${suffix}.csv`;document.body.appendChild(link);link.click();link.remove();
+            setTimeout(()=>URL.revokeObjectURL(url),1000);
         }
         // --- 項目編輯與設定邏輯 (Modal) ---
         function showModal(htmlContent) {
@@ -990,7 +1019,12 @@ function loginView() {
             document.getElementById('history-student-filter').onchange=()=>{historyLimit=50;renderHistory();};
             document.getElementById('history-more').onclick=()=>{historyLimit+=50;renderHistory();};
             // 統計篩選
+            const today=taipeiToday();
+            document.getElementById('stat-start-date').value=today.slice(0,7)+'-01';
+            document.getElementById('stat-end-date').value=today;
             document.getElementById('stat-date-filter').onchange = renderStats;
+            document.getElementById('stat-start-date').onchange = renderStats;
+            document.getElementById('stat-end-date').onchange = renderStats;
             document.getElementById('stat-subject-filter').onchange = renderStats;
             document.getElementById('btn-download-csv').onclick = downloadCSV;
         }
