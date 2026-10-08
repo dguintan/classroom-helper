@@ -78,7 +78,10 @@
         <div id="view-record" class="hidden p-4 fade-in">
             <!-- 科目切換 -->
             <div class="mb-4">
-                <label class="block text-xs text-gray-500 font-bold mb-1">當前科目 / 節數</label>
+                <div class="flex justify-between items-center mb-1">
+                    <label for="select-subject" class="block text-xs text-gray-500 font-bold">當前科目 / 節數</label>
+                    <button id="btn-manage-subjects" class="text-xs text-blue-600 font-bold px-2 py-1">管理科目</button>
+                </div>
                 <select id="select-subject" class="w-full p-2 bg-white border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
                     <option value="日常常規">日常常規</option>
                     <option value="早自習">早自習</option>
@@ -191,6 +194,14 @@
         <!-- 4. 設定頁面 -->
         <div id="view-settings" class="hidden p-4 fade-in">
             <h2 class="text-lg font-bold text-gray-700 mb-4">系統設定</h2><div class="bg-white p-4 rounded-xl mb-4"><p id="teacher-email" class="text-sm break-all mb-2"></p><button id="logout-button" class="border rounded px-4 py-2">登出教師帳號</button></div>
+            <section id="subject-settings" class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-4">
+                <div class="flex justify-between items-center gap-2 mb-3">
+                    <h3 class="text-sm font-bold">科目管理</h3>
+                    <button id="btn-add-subject" class="bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-bold">＋ 新增科目</button>
+                </div>
+                <p class="text-xs text-gray-500 mb-3">可新增、改名或刪除科目，至少保留一個。改名與刪除不會更動舊紀錄；舊名稱仍可在統計中查詢。設定會隨教師帳號同步。</p>
+                <div id="subject-list" class="flex flex-col gap-2"></div>
+            </section>
             <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-4">
                 <label class="block text-sm font-bold text-gray-700 mb-2">班級人數 (最後座號)</label>
                 <div class="flex items-center gap-3">
@@ -327,9 +338,11 @@ function loginView() {
  document.getElementById('auth-status').textContent='請登入教師帳號';
 }
         // --- 應用程式狀態 ---
+        const DEFAULT_SUBJECTS = ['日常常規', '早自習', '國語', '數學', '英文'];
         const state = {
             isLoaded: false,
             studentsCount: 30,
+            subjects: [...DEFAULT_SUBJECTS],
             groups: [
                 { id: 'g1', name: '第一組', members: [1,2,3,4,5] },
                 { id: 'g2', name: '第二組', members: [6,7,8,9,10] }
@@ -379,6 +392,8 @@ function loginView() {
                     userId = user.uid;
                     state.records=[]; state.behaviors=[]; state.isLoaded=false;
                     state.studentsCount=30;
+                    state.subjects=[...DEFAULT_SUBJECTS]; state.currentSubject=DEFAULT_SUBJECTS[0];
+                    renderSubjects();
                     state.groups=[{id:'g1',name:'第一組',members:[1,2,3,4,5]},{id:'g2',name:'第二組',members:[6,7,8,9,10]}];
                     resetSelection();
                     document.getElementById('teacher-email').textContent = user.email;
@@ -422,7 +437,9 @@ function loginView() {
                 const settings=await transaction.get(settingsRef);
                 if (!settings.exists()) {
                     // 不替舊資料強制補預設項目，避免覆蓋教師原先的空白配置。
-                    transaction.set(settingsRef,{ studentsCount:30,groups:state.groups,initialized:true });
+                    transaction.set(settingsRef,{ studentsCount:30,groups:state.groups,subjects:DEFAULT_SUBJECTS,initialized:true });
+                } else if (!Array.isArray(settings.data().subjects)) {
+                    transaction.set(settingsRef,{subjects:DEFAULT_SUBJECTS},{merge:true});
                 }
             });
             if(session!==sessionVersion) return;
@@ -463,6 +480,8 @@ function loginView() {
                         const data=snap.data()||{};
                         state.studentsCount=Math.min(99,Math.max(1,Number(data.studentsCount)||30));
                         state.groups=Array.isArray(data.groups)?data.groups:[];
+                        state.subjects=normalizeSubjects(data.subjects);
+                        renderSubjects(); renderStats();
                         state.selectedStudents=new Set([...state.selectedStudents].filter(n=>n<=state.studentsCount));
                         renderStudentGrid();renderGroupButtons();renderSettings();checkActionState();
                     }),
@@ -472,7 +491,7 @@ function loginView() {
                         renderBehaviors();renderManageList();checkActionState();
                     }),
                     listen(collection(db,'artifacts',APP_ID,'users',uid,'records'),snap=>{
-                        state.records=snap.docs.map(d=>({...d.data(),id:d.id}));renderStats();renderHistory();
+                        state.records=snap.docs.map(d=>({...d.data(),id:d.id}));renderSubjectFilter();renderStats();renderHistory();
                     })
                 ]);
                 if(session!==sessionVersion) return;
@@ -909,6 +928,106 @@ function loginView() {
             const b = state.behaviors.find(x => x.id === id);
             if(b) openBehaviorModal(b);
         }
+        // 科目以名稱儲存；歷史紀錄保留當時的名稱，不連動刪除或改名。
+        function normalizeSubjects(value) {
+            const names = Array.isArray(value) ? [...new Set(value.filter(x => typeof x === 'string').map(x => x.trim()).filter(x => x && x !== 'all'))] : [];
+            return names.length ? names : [...DEFAULT_SUBJECTS];
+        }
+        function renderSubjectFilter() {
+            const select = document.getElementById('stat-subject-filter');
+            const previous = select.value || 'all';
+            select.replaceChildren(new Option('全部科目', 'all'));
+            const historical = [...new Set(state.records.map(r => r.subject).filter(x => typeof x === 'string' && x && x !== 'all'))];
+            [...new Set([...state.subjects, ...historical])].forEach(name => {
+                select.add(new Option(state.subjects.includes(name) ? name : `${name}（歷史紀錄）`, name));
+            });
+            select.value = [...select.options].some(o => o.value === previous) ? previous : 'all';
+        }
+        function renderSubjects() {
+            const select = document.getElementById('select-subject');
+            select.replaceChildren(...state.subjects.map(name => new Option(name, name)));
+            state.currentSubject = state.subjects.includes(state.currentSubject) ? state.currentSubject : state.subjects[0];
+            select.value = state.currentSubject;
+            const list = document.getElementById('subject-list');
+            list.replaceChildren();
+            state.subjects.forEach(name => {
+                const row = document.createElement('div');
+                row.className = 'flex justify-between items-center gap-2 border rounded-lg p-2';
+                const label = document.createElement('span');
+                label.className = 'text-sm font-bold break-all min-w-0';
+                label.textContent = name;
+                const controls = document.createElement('div');
+                controls.className = 'flex gap-1 flex-shrink-0';
+                [['編輯', () => openSubjectModal(name)], ['刪除', () => deleteSubject(name)]].forEach(([text, action]) => {
+                    const button = document.createElement('button');
+                    button.type = 'button'; button.textContent = text;
+                    button.className = 'text-sm px-3 py-2 rounded bg-gray-50 ' + (text === '刪除' ? 'text-red-600' : 'text-blue-600');
+                    button.setAttribute('aria-label', `${text}科目 ${name}`);
+                    button.onclick = action; controls.appendChild(button);
+                });
+                row.append(label, controls); list.appendChild(row);
+            });
+            renderSubjectFilter();
+        }
+        let subjectSaving = false;
+        function openSubjectModal(original = null) {
+            if (!state.isLoaded || !userId) return;
+            showModal(`<div class="bg-gray-50 p-4 border-b font-bold text-lg">${original === null ? '新增科目' : '編輯科目'}</div>
+                <form id="subject-form" class="p-4 flex flex-col gap-3">
+                    <label for="subject-name" class="text-sm">科目名稱（最多 30 字）</label>
+                    <input id="subject-name" type="text" maxlength="30" required class="w-full border p-2 rounded" value="${esc(original || '')}">
+                    <p class="text-xs text-gray-500">舊紀錄保留原科目名稱。</p>
+                    <div class="flex justify-end gap-2"><button type="button" id="subject-cancel" class="px-4 py-2 rounded">取消</button><button id="subject-save" type="submit" class="px-4 py-2 bg-blue-600 text-white rounded">儲存</button></div>
+                </form>`);
+            document.getElementById('subject-cancel').onclick = hideModal;
+            document.getElementById('subject-form').onsubmit = async event => {
+                event.preventDefault();
+                const name = document.getElementById('subject-name').value.trim();
+                if (!name || name.length > 30 || name === 'all') return showToast('請輸入 1～30 字科目名稱，不能使用 all', 'error');
+                const button = document.getElementById('subject-save');
+                button.disabled = true;
+                const success = await mutateSubject(original === null ? 'add' : 'rename', original, name);
+                if (success) hideModal(); else button.disabled = false;
+            };
+            document.getElementById('subject-name').focus();
+        }
+        async function deleteSubject(name) {
+            if (!state.isLoaded || !userId || subjectSaving) return;
+            if (state.subjects.length <= 1) return showToast('至少需要保留一個科目', 'error');
+            if (!confirm(`確定刪除「${name}」科目？已儲存的紀錄與分數會保留，仍可在統計中查詢。`)) return;
+            await mutateSubject('delete', name);
+        }
+        async function mutateSubject(action, original, name) {
+            if (!state.isLoaded || !userId || subjectSaving) return false;
+            subjectSaving = true;
+            const uid = userId, session = sessionVersion;
+            const selectedBeforeSave = state.currentSubject;
+            try {
+                const ref = doc(db, 'artifacts', APP_ID, 'users', uid, 'settings', 'main');
+                const saved = await runTransaction(db, async transaction => {
+                    const snapshot = await transaction.get(ref);
+                    let names = normalizeSubjects(snapshot.data()?.subjects);
+                    if (action !== 'add' && !names.includes(original)) throw new Error('科目已由其他裝置修改，請重新操作。');
+                    if (action !== 'delete' && names.some(x => x === name && x !== original)) throw new Error('已有相同名稱的科目，請使用其他名稱。');
+                    if (action === 'add') names.push(name);
+                    else if (action === 'rename') names = names.map(x => x === original ? name : x);
+                    else if (action === 'delete') {
+                        if (names.length <= 1) throw new Error('至少需要保留一個科目。');
+                        names = names.filter(x => x !== original);
+                    }
+                    transaction.set(ref, {subjects:names}, {merge:true});
+                    return names;
+                });
+                if (uid !== userId || session !== sessionVersion) return false;
+                if (action === 'rename' && selectedBeforeSave === original) state.currentSubject = name;
+                state.subjects = saved; renderSubjects(); renderStats();
+                showToast(action === 'add' ? '已新增科目' : action === 'rename' ? '已更新科目' : '已刪除科目，舊紀錄保留', 'success');
+                return true;
+            } catch (error) {
+                if (uid === userId && session === sessionVersion) showToast(error.message || '儲存失敗，請確認網路後重試', 'error');
+                return false;
+            } finally { subjectSaving = false; }
+        }
         // --- 設定頁儲存邏輯 ---
         async function saveSettings() {
             try {
@@ -954,14 +1073,7 @@ function loginView() {
             if(tabId==='history') renderHistory();
             // 進入統計頁時更新科目下拉選單並重新渲染
             if (tabId === 'stats') {
-                const subFilter = document.getElementById('stat-subject-filter');
-                // 保留「全部」選項
-                const currentVal = subFilter.value;
-                subFilter.innerHTML = '<option value="all">全部科目</option>';
-                Array.from(document.getElementById('select-subject').options).forEach(opt => {
-                    subFilter.innerHTML += `<option value="${opt.value}">${opt.value}</option>`;
-                });
-                subFilter.value = currentVal || 'all';
+                renderSubjectFilter();
                 renderStats();
             }
         }
@@ -1011,6 +1123,13 @@ function loginView() {
             document.getElementById('btn-submit-action').onclick = submitRecord;
             // 項目管理
             document.getElementById('btn-add-behavior').onclick = () => openBehaviorModal();
+            // 科目管理
+            document.getElementById('btn-add-subject').onclick = () => openSubjectModal();
+            document.getElementById('btn-manage-subjects').onclick = () => {
+                switchTab('settings');
+                document.getElementById('subject-settings').scrollIntoView({block:'start'});
+            };
+            document.getElementById('select-subject').onchange = event => { state.currentSubject = event.target.value; };
             // 設定
             document.getElementById('btn-save-count').onclick = () => {
                 const val = Number(document.getElementById('setting-student-count').value);
